@@ -2,12 +2,13 @@ UV ?= uv
 
 install:
 	$(UV) sync --all-extras
+	$(UV) run playwright install chromium
 
 test:
 	$(UV) run pytest mkdocs_math/tests/ -v -k "not Layer3"
 
-test-all:
-	$(UV) run pytest mkdocs_math/tests/ -v
+test-all: install
+	$(UV) run pytest mkdocs_math/tests/ -v --override-ini="addopts="
 
 lint:
 	$(UV) run ruff check mkdocs_math/

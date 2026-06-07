@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {# Check if this is a math-article page (type: math-article in frontmatter) #}
+  {% if page.meta.get('type') == 'math-article' %}
+    {# Render article layout #}
+    <article class="article-page">
+      {# Article title from meta field #}
+      {% if page.meta.title %}
+      <h1 class="article-title">{{ page.meta.title }}</h1>
+      {% endif %}
+
+      {# Article header with author, date, place #}
+      <header class="article-header">
+        <div class="article-byline">
+          {% if page.meta.author %}{{ page.meta.author }}{% endif %}
+          {% if page.meta.date %}• {{ page.meta.date }}{% endif %}
+          {% if page.meta.place %}• {{ page.meta.place }}{% endif %}
+        </div>
+        <div class="article-links">
+          {% if page.meta.doi %}
+          <a href="https://doi.org/{{ page.meta.doi }}" class="article-link">DOI: {{ page.meta.doi }}</a>
+          {% endif %}
+          <a href="/mathematics/pdf/{{ page.file.name | replace('.md', '.pdf') }}" class="article-link">PDF</a>
+        </div>
+      </header>
+
+      {# Abstract section #}
+      {% if page.meta.abstract %}
+      <section class="article-abstract">
+        <h2>Abstract</h2>
+        <div>{{ page.meta.abstract }}</div>
+      </section>
+      {% endif %}
+
+      {# Table of contents / outline #}
+      {% if math_outline %}
+      <nav class="article-outline">
+        <h2>Outline</h2>
+        <ul>
+        {% for item in math_outline %}
+          <li style="margin-left: {{ (item.level - 2) * 1.5 }}rem">
+            <a href="#{{ item.id }}">{{ item.title }}</a>
+          </li>
+        {% endfor %}
+        </ul>
+      </nav>
+      {% endif %}
+
+      {# Article body content #}
+      <div class="article-body">
+        {{ page.content }}
+      </div>
+    </article>
+
+    <style>
+    .article-page {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .article-title {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
+    .article-header {
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--md-default-fg-color--light);
+    }
+
+    .article-links {
+      margin-top: 0.5rem;
+    }
+
+    .article-link {
+      display: inline-block;
+      margin: 0 0.5rem;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid var(--md-primary-fg-color);
+      border-radius: 3px;
+      color: var(--md-primary-fg-color);
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+
+    .article-link:hover {
+      background: var(--md-primary-fg-color);
+      color: white;
+    }
+
+    .article-abstract {
+      margin-bottom: 2rem;
+    }
+
+    .article-outline {
+      border-left: 3px solid #ccc;
+      margin-left: -0.5rem;
+      padding-left: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .article-abstract h2, .article-outline h2 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+    }
+
+    .article-outline ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .article-outline li {
+      margin: 0.25rem 0;
+    }
+
+    .article-outline a {
+      color: var(--md-primary-fg-color);
+      text-decoration: none;
+    }
+
+    .article-outline a:hover {
+      text-decoration: underline;
+    }
+    </style>
+
+  {% else %}
+    {# For non-article pages, use the default Material theme rendering #}
+    {{ super() }}
+  {% endif %}
+{% endblock %}

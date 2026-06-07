@@ -1,0 +1,13 @@
+# mkdocs-math plugin tasks
+
+# Run all tests (Layers 1, 2, 3)
+test:
+    uv run pytest . -v
+
+# Clean test build artifacts
+clean:
+    rm -rf tests/test_project/build
+
+# List available tasks
+@help:
+    just -l

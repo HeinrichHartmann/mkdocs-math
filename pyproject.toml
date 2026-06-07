@@ -1,0 +1,42 @@
+[project]
+name = "mkdocs-math"
+version = "0.1.0"
+description = "MkDocs plugin for mathematical typesetting: theorem environments, LaTeX preamble injection, citation management, and article outlines"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Heinrich Hartmann", email = "Heinrich@HeinrichHartmann.com"},
+]
+dependencies = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=7.2.4",
+    "pymdown-extensions>=10.16.1",
+    "bibtexparser>=1.4.0",
+    "pybtex>=0.25.0",
+    "pypandoc>=1.15",
+    "validators>=0.35.0",
+    "latexcodec>=3.0.0",
+    "pcre2>=0.6.0",
+    "markdown>=3.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.0",
+    "ruff>=0.6.0",
+]
+
+[project.entry-points."mkdocs.plugins"]
+mkdocs-math = "mkdocs_math:Plugin"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mkdocs_math"]
+
+[tool.pytest.ini_options]
+testpaths = ["mkdocs_math/tests"]

@@ -1,0 +1,618 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../local_preamble_test/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Environments with Math - Math Plugin Test Project</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#environments-with-math" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Math Plugin Test Project" class="md-header__button md-logo" aria-label="Math Plugin Test Project" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Math Plugin Test Project
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Environments with Math
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Math Plugin Test Project" class="md-nav__button md-logo" aria-label="Math Plugin Test Project" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Math Plugin Test Project
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environments with Math
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environments with Math
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#basic-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Environments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environments-with-math-in-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environments with Math in Content
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complex-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complex Environments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environments-without-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environments without Labels
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local_preamble_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Preamble Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../preamble_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preamble Injection Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test_article/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Mathematics Article
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#basic-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Environments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environments-with-math-in-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environments with Math in Content
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complex-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complex Environments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environments-without-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environments without Labels
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+  
+  
+    
+    
+                  
+
+
+
+<h1 id="environments-with-math">Environments with Math</h1>
+<div class="outline mathenvironment" id="outline-0-0-1">
+<p><a href="#outline-0-0-1"><strong>(1) Outline</strong>.</a></p>
+<ul>
+<li><a href="#basic-environments">Basic Environments</a></li>
+<li><a href="#environments-with-math-in-content">Environments with Math in Content</a></li>
+<li><a href="#complex-environments">Complex Environments</a></li>
+<li><a href="#environments-without-labels">Environments without Labels</a></li>
+</ul>
+</div>
+<p>Test environments that contain mathematical notation in labels and definitions.</p>
+<h2 id="basic-environments">Basic Environments</h2>
+<div class="definition mathenvironment" id="definition-mathbbrn">
+<p><a href="#definition-mathbbrn"><strong>(2) Definition</strong> (<span class="arithmatex">\(\mathbb{R}^n\)</span>).</a>
+A Euclidean space is the vector space <span class="arithmatex">\(\mathbb{R}^n\)</span> equipped with the standard inner product.</p>
+</div>
+<div class="theorem mathenvironment" id="theorem-0-0-3">
+<p><a href="#theorem-0-0-3"><strong>(3) Theorem</strong>.</a>
+For any metric space, open sets satisfy the axioms of a topology.</p>
+</div>
+<div class="proposition mathenvironment" id="proposition-cauchy-schwarz-inequality">
+<p><a href="#proposition-cauchy-schwarz-inequality"><strong>(4) Proposition</strong> (Cauchy-Schwarz Inequality).</a>
+For vectors <span class="arithmatex">\(u, v \in \mathbb{R}^n\)</span>, we have <span class="arithmatex">\(|u \cdot v| \leq \|u\| \|v\|\)</span>.</p>
+</div>
+<div class="lemma mathenvironment" id="lemma-0-0-5">
+<p><a href="#lemma-0-0-5"><strong>(5) Lemma</strong>.</a>
+Every closed and bounded subset of <span class="arithmatex">\(\mathbb{R}^n\)</span> is compact.</p>
+</div>
+<div class="corollary mathenvironment" id="corollary-0-0-6">
+<p><a href="#corollary-0-0-6"><strong>(6) Corollary</strong>.</a>
+A continuous image of a compact space is compact.</p>
+</div>
+<h2 id="environments-with-math-in-content">Environments with Math in Content</h2>
+<div class="definition mathenvironment" id="definition-continuity">
+<p><a href="#definition-continuity"><strong>(7) Definition</strong> (Continuity).</a>
+A function <span class="arithmatex">\(f: X \to Y\)</span> is continuous if for every open set <span class="arithmatex">\(U \subseteq Y\)</span>, the preimage <span class="arithmatex">\(f^{-1}(U)\)</span> is open in <span class="arithmatex">\(X\)</span>.</p>
+</div>
+<div class="theorem mathenvironment" id="theorem-intermediate-value-theorem">
+<p><a href="#theorem-intermediate-value-theorem"><strong>(8) Theorem</strong> (Intermediate Value Theorem).</a>
+If <span class="arithmatex">\(f: [a,b] \to \mathbb{R}\)</span> is continuous and <span class="arithmatex">\(f(a) &lt; 0 &lt; f(b)\)</span>, then there exists <span class="arithmatex">\(c \in (a,b)\)</span> such that <span class="arithmatex">\(f(c) = 0\)</span>.</p>
+</div>
+<div class="proof mathenvironment" id="proof-0-0-0">
+<p><a href="#proof-0-0-0"><strong>Proof</strong>.</a>
+Consider the set <span class="arithmatex">\(S = \{x \in [a,b] : f(x) \leq 0\}\)</span>. By continuity, <span class="arithmatex">\(S\)</span> is closed. By the Completeness Axiom, <span class="arithmatex">\(\sup S\)</span> exists.</p>
+</div>
+<div class="example mathenvironment" id="example-open-ball-in-mathbbr2">
+<p><a href="#example-open-ball-in-mathbbr2"><strong>(9) Example</strong> (Open ball in <span class="arithmatex">\(\mathbb{R}^2\)</span>).</a>
+The open ball of radius <span class="arithmatex">\(r &gt; 0\)</span> centered at origin is:
+$<span class="arithmatex">\(B_r(0) = \{(x, y) : x^2 + y^2 &lt; r^2\}\)</span>$</p>
+</div>
+<h2 id="complex-environments">Complex Environments</h2>
+<div class="theorem mathenvironment" id="theorem-compact-open-topology">
+<p><a href="#theorem-compact-open-topology"><strong>(10) Theorem</strong> (Compact Open Topology).</a>
+Let <span class="arithmatex">\(X\)</span> and <span class="arithmatex">\(Y\)</span> be topological spaces. The compact-open topology on <span class="arithmatex">\(C(X, Y)\)</span> is generated by subbasic sets:
+$<span class="arithmatex">\(\mathcal{S} = \{\{f \in C(X, Y) : f(K) \subseteq U\} : K \subseteq X \text{ compact}, U \subseteq Y \text{ open}\}\)</span>$</p>
+</div>
+<div class="proposition mathenvironment" id="proposition-heine-borel">
+<p><a href="#proposition-heine-borel"><strong>(11) Proposition</strong> (Heine-Borel).</a>
+A subset <span class="arithmatex">\(K \subseteq \mathbb{R}^n\)</span> is compact if and only if it is closed and bounded.</p>
+</div>
+<div class="definition mathenvironment" id="definition-metric-space">
+<p><a href="#definition-metric-space"><strong>(12) Definition</strong> (Metric Space).</a>
+A metric space is a pair <span class="arithmatex">\((X, d)\)</span> where <span class="arithmatex">\(X\)</span> is a set and <span class="arithmatex">\(d: X \times X \to \mathbb{R}_{\geq 0}\)</span> satisfies:
+1. <span class="arithmatex">\(d(x, y) = 0 \iff x = y\)</span>
+2. <span class="arithmatex">\(d(x, y) = d(y, x)\)</span>
+3. <span class="arithmatex">\(d(x, z) \leq d(x, y) + d(y, z)\)</span></p>
+</div>
+<h2 id="environments-without-labels">Environments without Labels</h2>
+<div class="remark mathenvironment" id="remark-0-0-13">
+<p><a href="#remark-0-0-13"><strong>(13) Remark</strong>.</a>
+The compact-open topology is finer than the pointwise convergence topology but coarser than the uniform topology.</p>
+</div>
+<div class="example mathenvironment" id="example-0-0-14">
+<p><a href="#example-0-0-14"><strong>(14) Example</strong>.</a>
+The metric <span class="arithmatex">\(d(x, y) = |x - y|\)</span> makes <span class="arithmatex">\(\mathbb{R}\)</span> a metric space.</p>
+</div>
+<div class="note mathenvironment" id="note-0-0-15">
+<p><a href="#note-0-0-15"><strong>(15) Note</strong>.</a>
+All norms on finite-dimensional vector spaces are equivalent.</p>
+</div>
+<div class="definition mathenvironment" id="definition-ckomega-compactopen-topology">
+<p><a href="#definition-ckomega-compactopen-topology"><strong>(16) Definition</strong> (<span class="arithmatex">\(C^k(\Omega)\)</span>, compact–open topology).</a>
+The space <span class="arithmatex">\(C^k(\Omega)\)</span> is equipped with the compact-open topology generated by seminorms involving derivatives up to order <span class="arithmatex">\(k\)</span> on compact subsets.</p>
+</div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+  
+
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascript/config.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"></script>
+      
+    
+  </body>
+</html>

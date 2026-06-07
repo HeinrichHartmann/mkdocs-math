@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {# Check if this is a math-article page (type: math-article in frontmatter) #}
+  {% if page.meta.get('type') == 'math-article' %}
+    {# Render article layout #}
+    <article class="article-page"
+      {% if page.meta.math and page.meta.math.proof_style %}
+        data-proof-style="{{ page.meta.math.proof_style }}"
+      {% endif %}>
+      {# Article title from meta field #}
+      {% if page.meta.title %}
+      <h1 class="article-title">{{ page.meta.title }}</h1>
+      {% if page.meta.tagline %}
+      <p class="article-subtitle">{{ page.meta.tagline }}</p>
+      {% endif %}
+      {% endif %}
+
+      {# Article header with author, date, place, publication info #}
+      <header class="article-header">
+        <div class="article-byline">
+          {{ page.meta.author }}
+          {% if page.meta.date %}
+          • {{ page.meta.date }}
+          {% endif %}
+          {% if page.meta.place %}
+          • {{ page.meta.place }}
+          {% endif %}
+        </div>
+        {% set doi = page.meta.zenodo.doi if page.meta.zenodo and page.meta.zenodo.doi else page.meta.doi %}
+        {% if doi %}
+        <div class="article-links">
+          <a href="https://doi.org/{{ doi }}" class="article-link">DOI: {{ doi }}</a>
+        </div>
+        {% endif %}
+
+      {% set file_name = page.file.src_path.split('/')[-1] %}
+      {% set pdf_name = file_name.replace('.md', '.pdf') %}
+      <div class="article-downloads">
+        <a href="{{ base_url }}/pdf/{{ pdf_name }}" class="article-download-link" title="Download PDF">
+          pdf
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 2l5 5h-5V4zm-3 9h2v4h2l-3 3-3-3h2v-4z"/>
+          </svg>
+        </a>
+        <a href="{{ base_url }}/{{ page.file.src_path }}" class="article-download-link" title="View Markdown source">
+            md
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 17v-2h8v2H6zm10-4H6v-2h10v2z"/>
+          </svg>
+        </a>
+      </div>
+      </header>
+
+      {# Abstract section #}
+      {% if page.meta.abstract %}
+      <section class="article-abstract">
+        <h2>Abstract</h2>
+        <div>{{ page.meta.abstract }}</div>
+      </section>
+      {% endif %}
+
+      {# Table of contents / outline #}
+      {% if math_outline %}
+      <nav class="article-outline">
+        <h2>Outline</h2>
+        <ul>
+        {% for item in math_outline %}
+          <li style="margin-left: {{ (item.level - 2) * 1.5 }}rem">
+            <a href="#{{ item.id }}">{{ item.title }}</a>
+          </li>
+        {% endfor %}
+        </ul>
+      </nav>
+      {% endif %}
+
+      {# Article body content #}
+      <div class="article-body">
+        {{ page.content | replace('<h1>' + page.meta.title + '</h1>', '') | replace('<h2>' + page.meta.title + '</h2>', '') }}
+      </div>
+
+      {# References section #}
+      {% if math_references %}
+      <section class="article-references">
+        <h2>References</h2>
+        <ul>
+        {% for ref in math_references %}
+          <li id="ref-{{ ref.key }}">
+            <strong class="citetag">[{{ ref.citetag }}]</strong>
+            <span class="citation-text">{{ ref.text | safe }}</span>
+          </li>
+        {% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+
+      {# Comments section - configurable via frontmatter #}
+      {% if page.meta.comments != false %}
+      <section class="article-comments">
+        <h2>Comments</h2>
+        <script src="https://utteranc.es/client.js"
+                repo="HeinrichHartmann/comments"
+                issue-term="title"
+                label="Comment"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+      </section>
+      {% endif %}
+    </article>
+
+    <style>
+    .article-page {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .article-title {
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: center !important;
+      align-items: center;
+    }
+
+    .article-subtitle {
+      margin: 0 0 2rem 0;
+      color: var(--md-default-fg-color--light);
+      font-style: italic;
+      text-align: center;
+      font-size: 1.2rem;
+    }
+
+    .article-header {
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      text-align: center;
+    }
+
+    .article-byline {
+      font-size: 0.9rem;
+      color: var(--md-default-fg-color--light);
+    }
+
+    .article-links {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    .article-link {
+      color: var(--md-default-fg-color--light);
+      text-decoration: none;
+    }
+
+    .article-link:hover {
+      text-decoration: underline;
+    }
+
+    .article-links .article-link + .article-link::before {
+      content: " · ";
+      color: var(--md-default-fg-color--lighter);
+    }
+
+    .article-downloads {
+      position: absolute;
+      right: -4.5rem;
+      top: 0;
+      display: flex;
+      flex-direction: row;
+      gap: 0.5rem;
+    }
+
+    .article-download-link {
+      color: var(--md-default-fg-color--lighter);
+      opacity: 0.5;
+      transition: opacity 0.2s;
+    }
+
+    .article-download-link:hover {
+      opacity: 1;
+      color: var(--md-primary-fg-color);
+    }
+
+    .article-page {
+      position: relative;
+    }
+
+    .article-abstract {
+      margin-top: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .article-abstract h2 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+    }
+
+    .article-abstract p {
+      margin: 0;
+    }
+
+    .article-outline {
+      border-left: 3px solid #ccc;
+      margin-left: -0.5rem;
+      padding-left: 0.5rem;
+      margin-top: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .article-outline h2 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+    }
+
+    .article-outline ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .article-outline li {
+      margin: 0.5rem 0;
+    }
+
+    .article-outline a {
+      color: var(--md-primary-fg-color);
+      text-decoration: none;
+    }
+
+    .article-outline a:hover {
+      text-decoration: underline;
+    }
+
+    .article-outline ul ul {
+      padding-left: 1.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .article-outline ul ul li {
+      font-size: 0.95rem;
+    }
+
+    .article-comments {
+      margin-top: 3rem;
+    }
+
+    .article-comments h2 {
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+    }
+    </style>
+
+  {% else %}
+    {# For non-article pages, use the default Material theme rendering #}
+    {{ super() }}
+  {% endif %}
+{% endblock %}

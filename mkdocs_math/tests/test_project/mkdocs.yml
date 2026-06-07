@@ -1,0 +1,31 @@
+site_name: "Math Plugin Test Project"
+docs_dir: "docs"
+site_dir: "build"
+
+theme:
+  name: material
+  custom_dir: overrides
+
+markdown_extensions:
+  - meta
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.blocks.html
+  - md_in_html
+  - attr_list
+  - pymdownx.arithmatex:
+      generic: true
+      inline_syntax: ['dollar', 'round']
+      block_syntax: ['dollar', 'square', 'begin']
+      smart_dollar: true
+
+plugins:
+  - mkdocs-math:
+      preamble_file: "preamble.tex"
+      bib_file: "meta/refs.bib"
+
+extra_javascript:
+  # MathJax configuration MUST load before MathJax script
+  - javascript/config.js
+  # MathJax via Arithmatex
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js

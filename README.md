@@ -13,14 +13,24 @@ MkDocs plugin for mathematical typesetting and article formatting.
 
 ## Installation
 
-```bash
-pip install mkdocs-math
+Add as a dependency in `pyproject.toml`:
+
+```toml
+dependencies = [
+    "mkdocs-math @ git+https://github.com/HeinrichHartmann/mkdocs-math.git",
+]
 ```
 
-Or from source:
+Then run:
 
 ```bash
-pip install git+https://github.com/HeinrichHartmann/mkdocs-math.git
+uv sync
+```
+
+Or add directly:
+
+```bash
+uv add "mkdocs-math @ git+https://github.com/HeinrichHartmann/mkdocs-math.git"
 ```
 
 ## Usage
@@ -32,6 +42,15 @@ plugins:
   - mkdocs-math:
       preamble_file: "docs/preamble.tex"
       bib_file: "refs.bib"
+```
+
+## Development
+
+```bash
+git clone https://github.com/HeinrichHartmann/mkdocs-math.git
+cd mkdocs-math
+uv sync --all-extras
+uv run pytest mkdocs_math/tests/ -k "not Layer3"
 ```
 
 ## License

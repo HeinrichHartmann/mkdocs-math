@@ -447,7 +447,8 @@ class Plugin(BasePlugin):
 
     def on_startup(self, *, command, dirty):
         """Having on_startup() tells mkdocs to keep the plugin object upon rebuilds."""
-        pass
+        global _preamble_cache
+        _preamble_cache = None  # Invalidate so preamble is re-read on each build
 
     def on_config(self, config):
         """Initialize plugin configuration, including citation registry if bib_file is configured."""
@@ -587,8 +588,10 @@ class Plugin(BasePlugin):
         # Inject outline (configurable via outline_enabled and outline_depth)
         markdown = inject_chapter_outline(markdown, page=page, config=config)
 
-        # Inject preamble (using configured preamble_file)
+        # Inject preamble (using configured preamble_file, resolved relative to mkdocs.yml)
         preamble_file = self.config.get('preamble_file', '')
+        if preamble_file:
+            preamble_file = str(get_path_relative_to_mkdocs_yaml(preamble_file, config))
         markdown = inject_preamble_markdown(markdown, page=page, config=config, preamble_file=preamble_file)
 
         # Convert theorem environments (registers anchors with their numbers)

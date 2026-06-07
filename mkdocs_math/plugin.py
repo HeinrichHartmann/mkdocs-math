@@ -55,8 +55,6 @@ def _protect_display_math(markdown: str) -> str:
 # Cache the preamble content to avoid reading file multiple times
 _preamble_cache = None
 
-# Global chapter/section map: {src_path: (chapter_number, section_number)}
-_chapter_map = {}
 
 
 def convert_theorem_environments(markdown: str, **kwargs) -> str:
@@ -66,15 +64,13 @@ def convert_theorem_environments(markdown: str, **kwargs) -> str:
     Matches: **Name.** or **Name (Label).** followed by content
     Terminates on: two blank lines, next environment header, markdown heading, or EOF
 
-    Adds hierarchical numbering: Definition 1.2.3, Proposition 1.2.4, etc.
-    - Chapter from sorted folder order (e.g., "01 Differential Duality" → chapter 1)
-    - Section from sorted file order within folder (e.g., "005 - ..." → section 2)
-    - Environment counter resets per file, increments for all environments
+    Adds sequential numbering per page: Definition 1, Proposition 2, etc.
+    Proof environments are unnumbered.
 
     Outputs pymdownx.blocks format:
         /// html | div
-            attrs: {id: 'definition-1-2-3', class: 'definition mathenvironment'}
-            **Definition 1.2.3 (Label).** content...
+            attrs: {id: 'definition-1', class: 'definition mathenvironment'}
+            **(1) Definition (Label).** content...
         ///
     """
     def slugify(text: str) -> str:
@@ -90,28 +86,19 @@ def convert_theorem_environments(markdown: str, **kwargs) -> str:
         slug = slug.strip('-')                 # Remove leading/trailing hyphens
         return slug
 
-    # Get chapter and section numbers for current file
     page = kwargs.get('page')
-    src_path = page.file.src_path if page else None
-    chapter, section = _chapter_map.get(src_path, (0, 0)) if src_path else (0, 0)
 
-    def make_id(env_name: str, chapter: int, section: int, env_num: int, label: str | None = None) -> str:
-        """Generate ID from environment name, chapter, section, number, and optional label.
-
-        - If label provided: use label only (stable across reordering)
-        - If no label: use chapter-section-number
-        """
+    def make_id(env_name: str, env_num: int, label: str | None = None) -> str:
+        """Generate ID from environment name, number, and optional label."""
         env_slug = slugify(env_name)
 
         if label:
-            # Labeled environments: ID from label only (stable)
             label_slug = label.lower().strip()
             label_slug = re.sub(r'[^\w\s-]', '', label_slug)
             label_slug = re.sub(r'[-\s]+', '-', label_slug)
             return f"{env_slug}-{label_slug}"
         else:
-            # Unlabeled environments: ID with chapter-section-number
-            return f"{env_slug}-{chapter}-{section}-{env_num}"
+            return f"{env_slug}-{env_num}"
 
     # Parse all environments
     environments = parse_environments(markdown)
@@ -149,19 +136,16 @@ def convert_theorem_environments(markdown: str, **kwargs) -> str:
         env_class = slugify(env_name)
         # Proofs are not numbered and do not carry a number-based ID suffix
         if env_name.lower() == "proof":
-            env_id = custom_id or make_id(env_name, chapter, section, 0, label)
+            env_id = custom_id or make_id(env_name, 0, label)
         else:
             # Use custom ID if provided, otherwise generate from numbering
-            env_id = custom_id or make_id(env_name, chapter, section, env_num, label)
+            env_id = custom_id or make_id(env_name, env_num, label)
 
         # Calculate number string for display
         if env_name.lower() == "proof" or env_num is None:
             number_str = None
         else:
-            if chapter > 0 and section > 0:
-                number_str = f"{chapter}.{section}.{env_num}"
-            else:
-                number_str = f"{env_num}"
+            number_str = f"{env_num}"
 
         # Register custom ID with plugin's anchor registry
         plugin = kwargs.get('plugin')
@@ -423,14 +407,6 @@ class Plugin(BasePlugin):
         ("bib_command", config_options.Type(str, default="\\bibliography")),
         ("bib_by_default", config_options.Type(bool, default=True)),
         ("footnote_format", config_options.Type(str, default="{key}")),
-        ("proofs", config_options.Type(dict, default={
-            "default_expanded": True,
-            "collapsible": True,
-        })),
-        ("environments", config_options.Type(dict, default={
-            "numbering": True,
-            "auto_anchor": True,
-        })),
     )
 
     def __init__(self):
@@ -488,16 +464,6 @@ class Plugin(BasePlugin):
             log.info(f"Citation registry initialized with {len(bibfiles)} BibTeX file(s): {bibfiles}")
             self.last_configured = time.time()
 
-        return config
-
-    def on_files(self, files, config):
-        """Process files on build start."""
-        log.debug(f"Processing {len(files)} files")
-        return files
-
-    def on_pre_build(self, config):
-        """Called before the build process starts."""
-        log.debug("Pre-build phase started")
         return config
 
     def on_post_build(self, config):

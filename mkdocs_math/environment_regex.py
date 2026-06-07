@@ -54,23 +54,6 @@ CONTENT_TERMINATOR = (
     r')'
 )
 
-# Full regex pattern for environment matching
-# Structure: START + ENV_HEADER + CONTENT + TERMINATOR
-# Groups:
-#   1 = environment name (captured in ENV_NAME via char class [A-Z]...)
-#   2 = label content inside parens, or None (captured in LABEL_PATTERN)
-#   3 = content between header and terminator
-_ENVIRONMENT_REGEX = re.compile(
-    r'(?:^|\n)'                              # Start of line (beginning or after newline)
-    r'\*\*' + f'({ENV_NAME})' +             # ** + environment name (group 1)
-    r'\s*' +                                 # Optional whitespace
-    f'{LABEL_PATTERN}' +                     # Optional label (group 2)
-    r'\.\*\*'                                # .** (end of header)
-    r'(\s*.*?)'                              # Content - group 3 (lazy match)
-    + CONTENT_TERMINATOR,
-    re.DOTALL
-)
-
 
 def parse_environments(markdown: str) -> list[EnvironmentMatch]:
     """Parse all math environments in markdown.
@@ -147,14 +130,3 @@ def parse_environments(markdown: str) -> list[EnvironmentMatch]:
     return matches
 
 
-def substitute_environments(markdown: str, replacer) -> str:
-    """Replace all environments in markdown using a replacer function.
-
-    Args:
-        markdown: The markdown text
-        replacer: A function that takes an EnvironmentMatch and returns replacement text
-
-    Returns:
-        The markdown with environments replaced
-    """
-    return _ENVIRONMENT_REGEX.sub(replacer, markdown)

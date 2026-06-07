@@ -14,12 +14,12 @@ dependencies = [
     "pymdown-extensions>=10.16.1",
     "bibtexparser>=1.4.0",
     "pybtex>=0.25.0",
-    "pypandoc>=1.15",
     "validators>=0.35.0",
-    "latexcodec>=3.0.0",
     "pcre2>=0.6.0",
     "markdown>=3.0",
     "pyyaml>=6.0",
+    "requests>=2.31.0",
+    "click>=8.1.0",
 ]
 
 [project.optional-dependencies]

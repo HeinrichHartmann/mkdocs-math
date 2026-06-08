@@ -279,7 +279,7 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     return document
 
 
-def compile_pdf(tex_file: Path, output_pdf: Path, working_dir: Path):
+def compile_pdf(tex_file: Path, output_pdf: Path, working_dir: Path, meta_dir: Optional[Path] = None):
     """Compile LaTeX to PDF using pdflatex + bibtex.
 
     Args:
@@ -290,8 +290,8 @@ def compile_pdf(tex_file: Path, output_pdf: Path, working_dir: Path):
     stem = tex_file.stem
 
     # Copy refs.bib and .bst files to working directory if needed
-    project_dir = Path(__file__).parent.parent
-    meta_dir = project_dir / "meta"
+    if meta_dir is None:
+        meta_dir = Path("meta")
 
     if not (working_dir / "refs.bib").exists():
         (working_dir / "refs.bib").write_text((meta_dir / "refs.bib").read_text())
@@ -319,7 +319,19 @@ def compile_pdf(tex_file: Path, output_pdf: Path, working_dir: Path):
     output_pdf.write_bytes(pdf_file.read_bytes())
 
 
-def export_markdown(input_file: Path, output_dir: Path, compile_to_pdf: bool = False, mobile: bool = False):
+def find_project_root(start: Path) -> Path:
+    """Find project root by walking up from start looking for mkdocs.yml or meta/refs.bib."""
+    d = start.resolve()
+    if d.is_file():
+        d = d.parent
+    while d != d.parent:
+        if (d / "mkdocs.yml").exists() or (d / "meta" / "refs.bib").exists():
+            return d
+        d = d.parent
+    return start.resolve().parent
+
+
+def export_markdown(input_file: Path, output_dir: Path, compile_to_pdf: bool = False, mobile: bool = False, project_dir: Optional[Path] = None):
     """Core export function."""
     # Validate input
     if not input_file.exists():
@@ -333,9 +345,12 @@ def export_markdown(input_file: Path, output_dir: Path, compile_to_pdf: bool = F
     output_tex = output_dir / f"{basename}.tex"
     output_pdf = output_dir / f"{basename}.pdf"
 
-    # Paths (module is in mkdocs_math/, so parent.parent is project root)
-    project_dir = Path(__file__).parent.parent
+    # Paths
     lua_filter = Path(__file__).parent / "pandoc-environments.lua"
+
+    if project_dir is None:
+        project_dir = find_project_root(input_file)
+    click.echo(f"Project root: {project_dir}")
     bib_file = project_dir / "meta" / "refs.bib"
 
     if not lua_filter.exists():
@@ -380,7 +395,7 @@ def export_markdown(input_file: Path, output_dir: Path, compile_to_pdf: bool = F
             tex_file = tmp_path / f"{basename}.tex"
             tex_file.write_text(latex_document)
 
-            compile_pdf(tex_file, output_pdf, tmp_path)
+            compile_pdf(tex_file, output_pdf, tmp_path, meta_dir=project_dir / "meta")
 
         click.echo(f"Created: {output_pdf}")
 
@@ -396,37 +411,40 @@ def cli():
 @cli.command('export-tex')
 @click.argument('input', type=click.Path(exists=True, path_type=Path))
 @click.option('-o', '--output-dir', type=click.Path(path_type=Path), help='Output directory (default: build/pdf)')
-def export_tex(input: Path, output_dir: Optional[Path]):
+@click.option('-p', '--project-dir', type=click.Path(exists=True, path_type=Path), help='Project root (default: auto-detect from input)')
+def export_tex(input: Path, output_dir: Optional[Path], project_dir: Optional[Path]):
     """Export to LaTeX (.tex) only."""
     if not output_dir:
-        project_dir = Path(__file__).parent.parent
-        output_dir = project_dir / "build" / "pdf"
+        root = project_dir or find_project_root(input)
+        output_dir = root / "build" / "pdf"
 
-    sys.exit(export_markdown(input, output_dir, compile_to_pdf=False))
+    sys.exit(export_markdown(input, output_dir, compile_to_pdf=False, project_dir=project_dir))
 
 
 @cli.command('export-pdf')
 @click.argument('input', type=click.Path(exists=True, path_type=Path))
 @click.option('-o', '--output-dir', type=click.Path(path_type=Path), help='Output directory (default: build/pdf)')
-def export_pdf(input: Path, output_dir: Optional[Path]):
+@click.option('-p', '--project-dir', type=click.Path(exists=True, path_type=Path), help='Project root (default: auto-detect from input)')
+def export_pdf(input: Path, output_dir: Optional[Path], project_dir: Optional[Path]):
     """Export to both LaTeX (.tex) and PDF."""
     if not output_dir:
-        project_dir = Path(__file__).parent.parent
-        output_dir = project_dir / "build" / "pdf"
+        root = project_dir or find_project_root(input)
+        output_dir = root / "build" / "pdf"
 
-    sys.exit(export_markdown(input, output_dir, compile_to_pdf=True))
+    sys.exit(export_markdown(input, output_dir, compile_to_pdf=True, project_dir=project_dir))
 
 
 @cli.command('export-pdf-mobile')
 @click.argument('input', type=click.Path(exists=True, path_type=Path))
 @click.option('-o', '--output-dir', type=click.Path(path_type=Path), help='Output directory (default: build/pdf-mobile)')
-def export_pdf_mobile(input: Path, output_dir: Optional[Path]):
+@click.option('-p', '--project-dir', type=click.Path(exists=True, path_type=Path), help='Project root (default: auto-detect from input)')
+def export_pdf_mobile(input: Path, output_dir: Optional[Path], project_dir: Optional[Path]):
     """Export to PDF optimized for iPhone 14 screen (80×170mm, 8pt)."""
     if not output_dir:
-        project_dir = Path(__file__).parent.parent
-        output_dir = project_dir / "build" / "pdf-mobile"
+        root = project_dir or find_project_root(input)
+        output_dir = root / "build" / "pdf-mobile"
 
-    sys.exit(export_markdown(input, output_dir, compile_to_pdf=True, mobile=True))
+    sys.exit(export_markdown(input, output_dir, compile_to_pdf=True, mobile=True, project_dir=project_dir))
 
 
 def main():

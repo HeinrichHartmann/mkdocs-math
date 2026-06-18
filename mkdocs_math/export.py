@@ -130,7 +130,10 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     footnote_parts = []
     if affiliation:
         footnote_parts.append(affiliation)
-    footnote_parts.append("\\href{https://heinrichhartmann.com/math}{HeinrichHartmann.com}")
+    canonical_base = meta.get('canonical_base', '').rstrip('/')
+    if canonical_base:
+        display = canonical_base.replace('https://', '').replace('http://', '')
+        footnote_parts.append(f"\\href{{{canonical_base}}}{{{display}}}")
     if email:
         footnote_parts.append(f"\\texttt{{{email}}}")
 
@@ -397,6 +400,7 @@ def export_markdown(input_file: Path, output_dir: Path, compile_to_pdf: bool = F
             canonical_base = (mkdocs_config.get('extra', {}) or {}).get('canonical_base', '')
             if canonical_base:
                 meta['canonical_url'] = canonical_base + meta['slug']
+                meta['canonical_base'] = canonical_base
 
     latex_document = wrap_latex_document(meta, latex_body, preamble_path, mobile=mobile)
 

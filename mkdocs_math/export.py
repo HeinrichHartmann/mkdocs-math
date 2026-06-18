@@ -143,8 +143,14 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     if orcid:
         author_line += f"\\;\\,\\orcidlink{{{orcid}}}"
 
-    # DOI line (displayed below author, centered, with reduced spacing)
-    doi_line = f"\\vspace{{-3em}}\\begin{{center}}\\href{{https://doi.org/{doi}}}{{doi:{doi}}}\\end{{center}}\\vspace{{0.5em}}" if doi else ""
+    # DOI and canonical URL lines (displayed below author, centered)
+    canonical_url = meta.get('canonical_url', '').strip()
+    header_links = []
+    if doi:
+        header_links.append(f"\\href{{https://doi.org/{doi}}}{{doi:{doi}}}")
+    if canonical_url:
+        header_links.append(f"\\href{{{canonical_url}}}{{{canonical_url}}}")
+    doi_line = f"\\vspace{{-3em}}\\begin{{center}}{' \\quad '.join(header_links)}\\end{{center}}\\vspace{{0.5em}}" if header_links else ""
 
     # Abstract section
     abstract_section = ""
@@ -379,6 +385,17 @@ def export_markdown(input_file: Path, output_dir: Path, compile_to_pdf: bool = F
     else:
         click.echo("No preamble.tex found; using default settings")
         preamble_path = None
+
+    # Construct canonical_url from mkdocs.yml canonical_base + slug
+    if not meta.get('canonical_url') and meta.get('slug'):
+        mkdocs_yml = project_dir / 'mkdocs.yml'
+        if mkdocs_yml.exists():
+            import yaml
+            with open(mkdocs_yml) as f:
+                mkdocs_config = yaml.safe_load(f)
+            canonical_base = (mkdocs_config.get('extra', {}) or {}).get('canonical_base', '')
+            if canonical_base:
+                meta['canonical_url'] = canonical_base + meta['slug']
 
     latex_document = wrap_latex_document(meta, latex_body, preamble_path, mobile=mobile)
 

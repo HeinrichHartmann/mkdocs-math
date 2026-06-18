@@ -23,34 +23,6 @@ from .citations.utils import (
 
 log = logging.getLogger("mkdocs.plugins.math")
 
-# Regex matching multi-line display math blocks: $$ ... $$
-# The block must start with $$ at line start (possibly indented) and end with $$ at line start.
-_DISPLAY_MATH_RE = re.compile(
-    r'^(\s*\$\$)\s*\n'   # opening $$ on its own line
-    r'(.*?)\n'            # content (non-greedy, multiline)
-    r'(\s*\$\$)',         # closing $$ on its own line
-    re.MULTILINE | re.DOTALL
-)
-
-
-def _protect_display_math(markdown: str) -> str:
-    """Wrap multi-line $$...$$ blocks in <div markdown="0"> to prevent
-    markdown emphasis parsing from corrupting underscores in LaTeX."""
-    count = [0]
-    def _wrap(m):
-        opening = m.group(1)
-        content = m.group(2)
-        closing = m.group(3)
-        # Only wrap if content contains subscripts that could trigger emphasis
-        if '_' in content:
-            count[0] += 1
-            return f'<div markdown="0">\n{opening}\n{content}\n{closing}\n</div>'
-        return m.group(0)
-    result = _DISPLAY_MATH_RE.sub(_wrap, markdown)
-    if count[0] > 0:
-        log.info(f"Protected {count[0]} display math blocks from emphasis parsing")
-    return result
-
 
 # Cache the preamble content to avoid reading file multiple times
 _preamble_cache = None
@@ -566,11 +538,6 @@ class Plugin(BasePlugin):
         # Resolve anchor references [#...] to numbered links
         markdown = self._resolve_anchor_references(markdown)
 
-        # Protect display math blocks from markdown emphasis parsing.
-        # Multi-line $$...$$ blocks containing underscores can trigger
-        # markdown's _..._ emphasis rules, corrupting the math.
-        # Wrapping in <div markdown="0"> prevents this.
-        markdown = _protect_display_math(markdown)
 
         return markdown
 

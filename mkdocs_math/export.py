@@ -13,6 +13,8 @@ Usage:
     python -m mkdocs_math export-pdf path/to/article.md [-o output_dir]
 """
 
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -208,6 +210,9 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
 \\usepackage[T1]{{fontenc}}
 \\usepackage{{lmodern}}
 
+%---------------------------- Graphics ----------------------------------------
+\\usepackage{{graphicx}}
+
 %---------------------------- Layout -----------------------------------------
 \\usepackage[{geometry_opts}]{{geometry}}
 \\usepackage{{setspace}}
@@ -289,13 +294,14 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     return document
 
 
-def compile_pdf(tex_file: Path, output_pdf: Path, working_dir: Path, meta_dir: Optional[Path] = None):
+def compile_pdf(tex_file: Path, output_pdf: Path, working_dir: Path, meta_dir: Optional[Path] = None, source_dir: Optional[Path] = None):
     """Compile LaTeX to PDF using pdflatex + bibtex.
 
     Args:
         tex_file: Path to .tex file
         output_pdf: Desired output PDF path
         working_dir: Directory containing refs.bib and .bst files
+        source_dir: Directory containing the source markdown (for resolving image paths)
     """
     stem = tex_file.stem
 
@@ -309,6 +315,17 @@ def compile_pdf(tex_file: Path, output_pdf: Path, working_dir: Path, meta_dir: O
     for bst_file in meta_dir.glob("*.bst"):
         if not (working_dir / bst_file.name).exists():
             (working_dir / bst_file.name).write_text(bst_file.read_text())
+
+    # Copy images referenced by \includegraphics into the working directory
+    if source_dir:
+        tex_content = tex_file.read_text()
+        for m in re.finditer(r'\\includegraphics(?:\[.*?\])?\{(.+?)\}', tex_content):
+            img_rel = m.group(1)
+            img_src = source_dir / img_rel
+            if img_src.exists():
+                img_dst = working_dir / img_rel
+                img_dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(img_src, img_dst)
 
     # Run pdflatex + bibtex pipeline
     # Note: pdflatex can return non-zero even on success (warnings), so we check PDF existence instead
@@ -417,7 +434,7 @@ def export_markdown(input_file: Path, output_dir: Path, compile_to_pdf: bool = F
             tex_file = tmp_path / f"{basename}.tex"
             tex_file.write_text(latex_document)
 
-            compile_pdf(tex_file, output_pdf, tmp_path, meta_dir=project_dir / "meta")
+            compile_pdf(tex_file, output_pdf, tmp_path, meta_dir=project_dir / "meta", source_dir=input_file.parent)
 
         click.echo(f"Created: {output_pdf}")
 

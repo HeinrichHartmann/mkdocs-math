@@ -130,7 +130,7 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     footnote_parts = []
     if affiliation:
         footnote_parts.append(affiliation)
-    footnote_parts.append("\\href{https://heinrichhartmann.com/mathematics}{HeinrichHartmann.com}")
+    footnote_parts.append("\\href{https://heinrichhartmann.com/math}{HeinrichHartmann.com}")
     if email:
         footnote_parts.append(f"\\texttt{{{email}}}")
 
@@ -149,8 +149,9 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     if doi:
         header_links.append(f"\\href{{https://doi.org/{doi}}}{{doi:{doi}}}")
     if canonical_url:
-        header_links.append(f"\\href{{{canonical_url}}}{{{canonical_url}}}")
-    doi_line = f"\\vspace{{-3em}}\\begin{{center}}{' \\quad '.join(header_links)}\\end{{center}}\\vspace{{0.5em}}" if header_links else ""
+        display_url = canonical_url.replace('https://', '').replace('http://', '')
+        header_links.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
+    doi_line = f"\\vspace{{-3em}}\\begin{{center}}{'\\\\\\\\'.join(header_links)}\\end{{center}}\\vspace{{0.5em}}" if header_links else ""
 
     # Abstract section
     abstract_section = ""

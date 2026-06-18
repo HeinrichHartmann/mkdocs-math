@@ -135,7 +135,7 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
         display = canonical_base.replace('https://', '').replace('http://', '')
         footnote_parts.append(f"\\href{{{canonical_base}}}{{{display}}}")
     if email:
-        footnote_parts.append(f"\\texttt{{{email.lower()}}}")
+        footnote_parts.append(f"\\texttt{{{email}}}")
 
     footnote_content = " / ".join(footnote_parts) if footnote_parts else ""
 
@@ -161,8 +161,7 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
             f"\\fancypagestyle{{firstpage}}{{%\n"
             f"  \\fancyhf{{}}\n"
             f"  \\renewcommand{{\\headrulewidth}}{{0pt}}\n"
-            f"  \\fancyfoot[C]{{\\thepage}}\n"
-            f"  \\fancyfoot[R]{{\\scriptsize \\href{{{canonical_url}}}{{{canonical_url}}}}}\n"
+            f"  \\fancyfoot[C]{{\\small \\href{{{canonical_url}}}{{{display_url}}}}}\n"
             f"}}"
         )
 

@@ -146,24 +146,15 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     if orcid:
         author_line += f"\\;\\,\\orcidlink{{{orcid}}}"
 
-    # DOI line (displayed below author, centered)
-    doi_line = ""
-    if doi and not no_doi:
-        doi_line = f"\\vspace{{-3em}}\\begin{{center}}\\href{{https://doi.org/{doi}}}{{doi:{doi}}}\\end{{center}}\\vspace{{0.5em}}"
-
-    # Canonical URL in first-page footer
+    # DOI and canonical URL lines (displayed below author, centered)
     canonical_url = meta.get('canonical_url', '').strip()
-    footer_block = ""
+    header_links = []
+    if doi and not no_doi:
+        header_links.append(f"\\href{{https://doi.org/{doi}}}{{doi:{doi}}}")
     if canonical_url:
         display_url = canonical_url.replace('https://', '').replace('http://', '')
-        footer_block = (
-            f"\\usepackage{{fancyhdr}}\n"
-            f"\\fancypagestyle{{firstpage}}{{%\n"
-            f"  \\fancyhf{{}}\n"
-            f"  \\renewcommand{{\\headrulewidth}}{{0pt}}\n"
-            f"  \\fancyfoot[C]{{\\small \\href{{{canonical_url}}}{{{display_url}}}}}\n"
-            f"}}"
-        )
+        header_links.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
+    doi_line = f"\\vspace{{-3em}}\\begin{{center}}{'\\\\\\\\'.join(header_links)}\\end{{center}}\\vspace{{0.5em}}" if header_links else ""
 
     # Abstract section
     abstract_section = ""
@@ -270,8 +261,6 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
 \\usepackage{{authblk}}
 \\usepackage{{orcidlink}}
 
-{footer_block}
-
 %---------------------------- Citations (natbib) -----------------------------
 % Citations use natbib + alpha-local.bst style via BibTeX
 
@@ -287,7 +276,6 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
 \\begin{{document}}
 {extra_layout}
 \\maketitle
-{"\\thispagestyle{firstpage}" if canonical_url else ""}
 {doi_line}
 {abstract_section}
 {toc_section}

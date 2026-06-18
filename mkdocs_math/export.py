@@ -168,7 +168,7 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     # Subtitle/tagline
     subtitle_block = ""
     if tagline:
-        subtitle_block = f"\\\\\\\\[0.5em] \\large {tagline}"
+        subtitle_block = f"\\\\[0.5em] \\large {tagline}"
 
     # Layout settings: mobile (iPhone 14) vs standard A4
     if mobile:

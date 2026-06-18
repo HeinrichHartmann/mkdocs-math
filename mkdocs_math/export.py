@@ -212,6 +212,10 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
 
 %---------------------------- Graphics ----------------------------------------
 \\usepackage{{graphicx}}
+\\makeatletter
+\\def\\maxwidth{{\\ifdim\\Gin@nat@width>\\linewidth\\linewidth\\else\\Gin@nat@width\\fi}}
+\\makeatother
+\\setkeys{{Gin}}{{width=\\maxwidth,keepaspectratio}}
 
 %---------------------------- Layout -----------------------------------------
 \\usepackage[{geometry_opts}]{{geometry}}

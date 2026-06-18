@@ -102,7 +102,7 @@ def pandoc_to_latex(markdown: str, lua_filter_path: Path, bib_file: Optional[Pat
     return result.stdout
 
 
-def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Path] = None, mobile: bool = False) -> str:
+def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Path] = None, mobile: bool = False, no_doi: bool = False) -> str:
     """Wrap LaTeX body in complete document with preamble."""
 
     # Load preamble if provided
@@ -149,7 +149,7 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     # DOI and canonical URL lines (displayed below author, centered)
     canonical_url = meta.get('canonical_url', '').strip()
     header_links = []
-    if doi:
+    if doi and not no_doi:
         header_links.append(f"\\href{{https://doi.org/{doi}}}{{doi:{doi}}}")
     if canonical_url:
         display_url = canonical_url.replace('https://', '').replace('http://', '')
@@ -341,7 +341,7 @@ def find_project_root(start: Path) -> Path:
     return start.resolve().parent
 
 
-def export_markdown(input_file: Path, output_dir: Path, compile_to_pdf: bool = False, mobile: bool = False, project_dir: Optional[Path] = None):
+def export_markdown(input_file: Path, output_dir: Path, compile_to_pdf: bool = False, mobile: bool = False, project_dir: Optional[Path] = None, no_doi: bool = False):
     """Core export function."""
     # Validate input
     if not input_file.exists():
@@ -402,7 +402,7 @@ def export_markdown(input_file: Path, output_dir: Path, compile_to_pdf: bool = F
                 meta['canonical_url'] = canonical_base + meta['slug']
                 meta['canonical_base'] = canonical_base
 
-    latex_document = wrap_latex_document(meta, latex_body, preamble_path, mobile=mobile)
+    latex_document = wrap_latex_document(meta, latex_body, preamble_path, mobile=mobile, no_doi=no_doi)
 
     # Step 4: Save .tex file
     output_tex.write_text(latex_document)
@@ -434,26 +434,28 @@ def cli():
 @click.argument('input', type=click.Path(exists=True, path_type=Path))
 @click.option('-o', '--output-dir', type=click.Path(path_type=Path), help='Output directory (default: build/pdf)')
 @click.option('-p', '--project-dir', type=click.Path(exists=True, path_type=Path), help='Project root (default: auto-detect from input)')
-def export_tex(input: Path, output_dir: Optional[Path], project_dir: Optional[Path]):
+@click.option('--no-doi', is_flag=True, help='Omit DOI from header (for arXiv submission)')
+def export_tex(input: Path, output_dir: Optional[Path], project_dir: Optional[Path], no_doi: bool):
     """Export to LaTeX (.tex) only."""
     if not output_dir:
         root = project_dir or find_project_root(input)
         output_dir = root / "build" / "pdf"
 
-    sys.exit(export_markdown(input, output_dir, compile_to_pdf=False, project_dir=project_dir))
+    sys.exit(export_markdown(input, output_dir, compile_to_pdf=False, project_dir=project_dir, no_doi=no_doi))
 
 
 @cli.command('export-pdf')
 @click.argument('input', type=click.Path(exists=True, path_type=Path))
 @click.option('-o', '--output-dir', type=click.Path(path_type=Path), help='Output directory (default: build/pdf)')
 @click.option('-p', '--project-dir', type=click.Path(exists=True, path_type=Path), help='Project root (default: auto-detect from input)')
-def export_pdf(input: Path, output_dir: Optional[Path], project_dir: Optional[Path]):
+@click.option('--no-doi', is_flag=True, help='Omit DOI from header (for arXiv submission)')
+def export_pdf(input: Path, output_dir: Optional[Path], project_dir: Optional[Path], no_doi: bool):
     """Export to both LaTeX (.tex) and PDF."""
     if not output_dir:
         root = project_dir or find_project_root(input)
         output_dir = root / "build" / "pdf"
 
-    sys.exit(export_markdown(input, output_dir, compile_to_pdf=True, project_dir=project_dir))
+    sys.exit(export_markdown(input, output_dir, compile_to_pdf=True, project_dir=project_dir, no_doi=no_doi))
 
 
 @cli.command('export-pdf-mobile')

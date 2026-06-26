@@ -181,7 +181,7 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
 
     doi_line = ""
     if header_lines:
-        inner = "\\\\\\\\".join(header_lines)
+        inner = "\\\\\\\\[0.3em]".join(header_lines)
         doi_line = f"\\vspace{{-3em}}\\begin{{center}}{inner}\\end{{center}}\\vspace{{0.5em}}"
 
     # Abstract section

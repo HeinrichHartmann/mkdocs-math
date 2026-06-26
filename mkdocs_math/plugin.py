@@ -487,23 +487,26 @@ class Plugin(BasePlugin):
                 'abstract': meta.get('abstract', '').strip(),
                 'author': meta.get('author', ''),
                 'url': rel_url,
+                'tagline': meta.get('tagline', ''),
+                'publications': meta.get('publications', {}),
             })
 
         # Sort by date descending
         articles.sort(key=lambda a: a['date'], reverse=True)
 
-        # Generate listing as HTML blocks for tight spacing
+        # Generate listing as markdown list with taglines
         lines = []
         for art in articles:
-            top_parts = [art['date']]
+            year = art['date'][:4] if art['date'] else ''
+            parts = [f'**[{art["title"]}]({art["url"]})** ({year})']
             if art['doi']:
-                top_parts.append(f'DOI: <a href="https://doi.org/{art["doi"]}">{art["doi"]}</a>')
-            lines.append('<div class="article-entry" style="margin-bottom: 2em;">')
-            lines.append(f'<div style="font-size: 0.8em; color: #888;">{" · ".join(top_parts)}</div>')
-            lines.append(f'<div style="font-size: 1.2em; margin: 0.1em 0 0.3em 0;"><a href="{art["url"]}">{art["title"]}</a></div>')
-            if art['abstract']:
-                lines.append(f'<div style="font-size: 0.85em; color: #555; padding-left: 1em; border-left: 2px solid #ddd;">\n\n{art["abstract"]}\n\n</div>')
-            lines.append('</div>')
+                parts.append(f'[DOI](https://doi.org/{art["doi"]})')
+            for name, url in (art.get('publications') or {}).items():
+                parts.append(f'[{name}]({url})')
+            line = ' · '.join(parts)
+            if art.get('tagline'):
+                line += '<br>\n  *' + art['tagline'] + '*'
+            lines.append(f'- {line}')
             lines.append('')
 
         return markdown + '\n\n' + '\n'.join(lines)

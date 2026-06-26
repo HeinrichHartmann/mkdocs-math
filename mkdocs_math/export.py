@@ -148,15 +148,41 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     if orcid:
         author_line += f"\\;\\,\\orcidlink{{{orcid}}}"
 
-    # DOI and canonical URL lines (displayed below author, centered)
+    # Header links below title (centered, two lines):
+    #   Line 1: canonical URL (slug)
+    #   Line 2: DOI · arXiv · Zenodo · ...
+    #
+    # v1 (single DOI + canonical URL, gated by no_doi):
+    #   canonical_url = meta.get('canonical_url', '').strip()
+    #   header_links = []
+    #   if doi and not no_doi:
+    #       header_links.append(f"\\href{{https://doi.org/{doi}}}{{doi:{doi}}}")
+    #   if canonical_url:
+    #       display_url = canonical_url.replace('https://', '').replace('http://', '')
+    #       header_links.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
+    #   doi_line = f"\\vspace{{-3em}}\\begin{{center}}{'\\\\\\\\'.join(header_links)}\\end{{center}}\\vspace{{0.5em}}" if header_links else ""
+
     canonical_url = meta.get('canonical_url', '').strip()
-    header_links = []
-    if doi and not no_doi:
-        header_links.append(f"\\href{{https://doi.org/{doi}}}{{doi:{doi}}}")
+    publications = meta.get('publications', {}) or {}
+
+    header_lines = []
+    # Line 1: canonical URL
     if canonical_url:
         display_url = canonical_url.replace('https://', '').replace('http://', '')
-        header_links.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
-    doi_line = f"\\vspace{{-3em}}\\begin{{center}}{'\\\\\\\\'.join(header_links)}\\end{{center}}\\vspace{{0.5em}}" if header_links else ""
+        header_lines.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
+    # Line 2: DOI · publication links
+    pub_parts = []
+    if doi:
+        pub_parts.append(f"\\href{{https://doi.org/{doi}}}{{DOI}}")
+    for name, url in publications.items():
+        pub_parts.append(f"\\href{{{url}}}{{{name}}}")
+    if pub_parts:
+        header_lines.append(" $\\cdot$ ".join(pub_parts))
+
+    doi_line = ""
+    if header_lines:
+        inner = "\\\\\\\\".join(header_lines)
+        doi_line = f"\\vspace{{-3em}}\\begin{{center}}{inner}\\end{{center}}\\vspace{{0.5em}}"
 
     # Abstract section
     abstract_section = ""

@@ -403,6 +403,11 @@ class Plugin(BasePlugin):
         log.info("mkdocs-math plugin initialized")
         log.debug(f"Config: proofs={self.config.get('proofs')}, environments={self.config.get('environments')}")
 
+        # Register plugin's template directory so main.html is found by mkdocs
+        templates_dir = str(Path(__file__).parent / "templates")
+        if templates_dir not in config['theme'].dirs:
+            config['theme'].dirs.insert(0, templates_dir)
+
         # Load caches from disk
         self.citation_index = self._load_citation_index()
         self.anchor_registry = self._load_anchor_cache()

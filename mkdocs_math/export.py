@@ -162,27 +162,28 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     #       header_links.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
     #   doi_line = f"\\vspace{{-3em}}\\begin{{center}}{'\\\\\\\\'.join(header_links)}\\end{{center}}\\vspace{{0.5em}}" if header_links else ""
 
-    canonical_url = meta.get('canonical_url', '').strip()
-    publications = meta.get('publications', {}) or {}
-
-    header_lines = []
-    # Line 1: canonical URL
-    if canonical_url:
-        display_url = canonical_url.replace('https://', '').replace('http://', '')
-        header_lines.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
-    # Line 2: DOI · publication links
-    pub_parts = []
-    if doi:
-        pub_parts.append(f"\\href{{https://doi.org/{doi}}}{{DOI}}")
-    for name, url in publications.items():
-        pub_parts.append(f"\\href{{{url}}}{{{name}}}")
-    if pub_parts:
-        header_lines.append(" $\\cdot$ ".join(pub_parts))
-
     doi_line = ""
-    if header_lines:
-        inner = "\\\\\\\\[0.3em]".join(header_lines)
-        doi_line = f"\\vspace{{-3em}}\\begin{{center}}{inner}\\end{{center}}\\vspace{{0.5em}}"
+    if not no_doi:
+        canonical_url = meta.get('canonical_url', '').strip()
+        publications = meta.get('publications', {}) or {}
+
+        header_lines = []
+        # Line 1: canonical URL
+        if canonical_url:
+            display_url = canonical_url.replace('https://', '').replace('http://', '')
+            header_lines.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
+        # Line 2: DOI · publication links
+        pub_parts = []
+        if doi:
+            pub_parts.append(f"\\href{{https://doi.org/{doi}}}{{DOI}}")
+        for name, url in publications.items():
+            pub_parts.append(f"\\href{{{url}}}{{{name}}}")
+        if pub_parts:
+            header_lines.append(" $\\cdot$ ".join(pub_parts))
+
+        if header_lines:
+            inner = "\\\\\\\\[0.3em]".join(header_lines)
+            doi_line = f"\\vspace{{-3em}}\\begin{{center}}{inner}\\end{{center}}\\vspace{{0.5em}}"
 
     # Abstract section
     abstract_section = ""

@@ -17,11 +17,21 @@
           {% if page.meta.date %}• {{ page.meta.date }}{% endif %}
           {% if page.meta.place %}• {{ page.meta.place }}{% endif %}
         </div>
+        {% if page.meta.slug %}
+        <div class="article-canonical">
+          <a href="{{ config.extra.canonical_base }}{{ page.meta.slug }}">{{ config.extra.canonical_base | replace('https://', '') }}{{ page.meta.slug }}</a>
+        </div>
+        {% endif %}
         <div class="article-links">
           {% if page.meta.doi %}
-          <a href="https://doi.org/{{ page.meta.doi }}" class="article-link">DOI: {{ page.meta.doi }}</a>
+          <a href="https://doi.org/{{ page.meta.doi }}" class="article-link">DOI</a>
           {% endif %}
-          <a href="/mathematics/pdf/{{ page.file.name | replace('.md', '.pdf') }}" class="article-link">PDF</a>
+          {% if page.meta.publications %}
+          {% for name, url in page.meta.publications.items() %}
+          <a href="{{ url }}" class="article-link">{{ name }}</a>
+          {% endfor %}
+          {% endif %}
+          <a href="/math/pdf/{{ page.file.name | replace('.md', '.pdf') }}" class="article-link">PDF</a>
         </div>
       </header>
 
@@ -70,6 +80,20 @@
       text-align: center;
       font-size: 0.9rem;
       color: var(--md-default-fg-color--light);
+    }
+
+    .article-canonical {
+      margin-top: 0.3rem;
+      font-size: 0.85rem;
+    }
+
+    .article-canonical a {
+      color: var(--md-default-fg-color--light);
+      text-decoration: none;
+    }
+
+    .article-canonical a:hover {
+      text-decoration: underline;
     }
 
     .article-links {

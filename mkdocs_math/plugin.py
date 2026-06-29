@@ -549,6 +549,13 @@ class Plugin(BasePlugin):
 
         return markdown
 
+    def on_env(self, env, config, files):
+        """Register custom Jinja filters."""
+        def markdown_filter(text):
+            return md.markdown(text, extensions=['pymdownx.arithmatex'], extension_configs={'pymdownx.arithmatex': {'generic': True}})
+        env.filters['markdown'] = markdown_filter
+        return env
+
     def on_page_context(self, context, page, config, nav):
         """Inject outline and references data into template context for article pages."""
         # Only process article-type pages

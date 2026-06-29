@@ -77,7 +77,7 @@
       {% if page.meta.abstract %}
       <section class="article-abstract">
         <h2>Abstract</h2>
-        <div>{{ page.meta.abstract }}</div>
+        <div>{{ page.meta.abstract | markdown }}</div>
       </section>
       {% endif %}
 

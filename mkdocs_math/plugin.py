@@ -514,7 +514,10 @@ class Plugin(BasePlugin):
             lines.append(f'- {line}')
             lines.append('')
 
-        return markdown + '\n\n' + '\n'.join(lines)
+        listing = '\n'.join(lines)
+        if '{{ARTICLES}}' in markdown:
+            return markdown.replace('{{ARTICLES}}', listing)
+        return markdown + '\n\n' + listing
 
     def on_page_markdown(self, markdown, page, config, files):
         """Process markdown for each page."""

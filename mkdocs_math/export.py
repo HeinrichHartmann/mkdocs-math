@@ -162,17 +162,16 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
     #       header_links.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
     #   doi_line = f"\\vspace{{-3em}}\\begin{{center}}{'\\\\\\\\'.join(header_links)}\\end{{center}}\\vspace{{0.5em}}" if header_links else ""
 
-    doi_line = ""
-    if not no_doi:
-        canonical_url = meta.get('canonical_url', '').strip()
-        publications = meta.get('publications', {}) or {}
+    canonical_url = meta.get('canonical_url', '').strip()
+    publications = meta.get('publications', {}) or {}
 
-        header_lines = []
-        # Line 1: canonical URL
-        if canonical_url:
-            display_url = canonical_url.replace('https://', '').replace('http://', '')
-            header_lines.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
-        # Line 2: DOI · publication links
+    header_lines = []
+    # Line 1: canonical URL (always shown)
+    if canonical_url:
+        display_url = canonical_url.replace('https://', '').replace('http://', '')
+        header_lines.append(f"\\href{{{canonical_url}}}{{{display_url}}}")
+    # Line 2: DOI · publication links (only when not --no-doi)
+    if not no_doi:
         pub_parts = []
         if doi:
             pub_parts.append(f"\\href{{https://doi.org/{doi}}}{{DOI}}")
@@ -181,9 +180,10 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
         if pub_parts:
             header_lines.append(" $\\cdot$ ".join(pub_parts))
 
-        if header_lines:
-            inner = "\\\\[0.3em]".join(header_lines)
-            doi_line = f"\\vspace{{-3em}}\\begin{{center}}{inner}\\end{{center}}\\vspace{{0.5em}}"
+    doi_line = ""
+    if header_lines:
+        inner = "\\\\[0.3em]".join(header_lines)
+        doi_line = f"\\vspace{{-3em}}\\begin{{center}}{inner}\\end{{center}}\\vspace{{0.5em}}"
 
     # Abstract section
     abstract_section = ""

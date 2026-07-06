@@ -480,8 +480,7 @@ class Plugin(BasePlugin):
                 continue
             if meta.get('type') != 'math-article':
                 continue
-            if meta.get('draft', False):
-                continue
+            is_draft = meta.get('draft', False)
             # Compute relative URL from the index page to this article
             from posixpath import relpath as posix_relpath
             rel_url = posix_relpath(f.url, start=page.file.url.rsplit('/', 1)[0] if '/' in page.file.url else '')
@@ -494,6 +493,7 @@ class Plugin(BasePlugin):
                 'url': rel_url,
                 'tagline': meta.get('tagline', ''),
                 'publications': meta.get('publications', {}),
+                'draft': is_draft,
             })
 
         # Sort by date descending
@@ -503,7 +503,8 @@ class Plugin(BasePlugin):
         lines = []
         for art in articles:
             year = art['date'][:4] if art['date'] else ''
-            parts = [f'**[{art["title"]}]({art["url"]})** ({year})']
+            draft_marker = ' *(draft)*' if art.get('draft') else ''
+            parts = [f'**[{art["title"]}]({art["url"]})** ({year}){draft_marker}']
             if art['doi']:
                 parts.append(f'[DOI](https://doi.org/{art["doi"]})')
             for name, url in (art.get('publications') or {}).items():

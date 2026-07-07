@@ -498,8 +498,10 @@ class Plugin(BasePlugin):
             notes_dir = None
             for d in src_dir.iterdir():
                 if d.is_dir() and d.name.startswith(src_stem) and d.name.endswith('.d'):
-                    notes_url = posix_relpath(d.name + '/', start=page.file.url.rsplit('/', 1)[0] if '/' in page.file.url else '')
-                    notes_dir = notes_url
+                    # Build notes URL relative to the listing page, using the article's parent dir
+                    article_parent = f.src_path.rsplit('/', 1)[0] if '/' in f.src_path else ''
+                    notes_src = article_parent + '/' + d.name + '/' if article_parent else d.name + '/'
+                    notes_dir = posix_relpath(notes_src, start=page.file.url.rsplit('/', 1)[0] if '/' in page.file.url else '')
                     break
             articles.append({
                 'title': meta.get('title', 'Untitled'),

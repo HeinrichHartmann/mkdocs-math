@@ -492,6 +492,15 @@ class Plugin(BasePlugin):
             # Compute relative URL from the index page to this article
             from posixpath import relpath as posix_relpath
             rel_url = posix_relpath(f.url, start=page.file.url.rsplit('/', 1)[0] if '/' in page.file.url else '')
+            # Check if a .d/ notes folder exists
+            src_stem = Path(f.abs_src_path).stem
+            src_dir = Path(f.abs_src_path).parent
+            notes_dir = None
+            for d in src_dir.iterdir():
+                if d.is_dir() and d.name.startswith(src_stem) and d.name.endswith('.d'):
+                    notes_url = posix_relpath(d.name + '/', start=page.file.url.rsplit('/', 1)[0] if '/' in page.file.url else '')
+                    notes_dir = notes_url
+                    break
             articles.append({
                 'title': meta.get('title', 'Untitled'),
                 'date': str(meta.get('date', '')),
@@ -502,6 +511,7 @@ class Plugin(BasePlugin):
                 'tagline': meta.get('tagline', ''),
                 'publications': meta.get('publications', {}),
                 'status': meta.get('status', '900 Uncategorized'),
+                'notes_dir': notes_dir,
             })
 
         # Group by status, sort groups lexicographically (numeric prefix gives order)
@@ -531,6 +541,8 @@ class Plugin(BasePlugin):
             for art in groups[status]:
                 year = art['date'][:4] if art['date'] else ''
                 parts = [f'**[{art["title"]}]({art["url"]})** ({year})']
+                if art.get('notes_dir'):
+                    parts.append(f'[notes]({art["notes_dir"]})')
                 if art['doi']:
                     parts.append(f'[DOI](https://doi.org/{art["doi"]})')
                 for name, url in (art.get('publications') or {}).items():

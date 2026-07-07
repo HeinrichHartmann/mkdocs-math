@@ -462,6 +462,15 @@ class Plugin(BasePlugin):
         for f in files:
             if not f.src_path.endswith('.md'):
                 continue
+            # Only scan direct children, not subdirectories
+            import os
+            parent = os.path.dirname(f.src_path)
+            if os.path.dirname(parent):
+                # More than one level deep from docs root — skip
+                # We want "200 Articles/foo.md" but not "200 Articles/foo.d/bar.md"
+                parts = f.src_path.replace('\\', '/').split('/')
+                if len(parts) > 2:
+                    continue
             try:
                 content = Path(f.abs_src_path).read_text(encoding='utf-8')
             except Exception:

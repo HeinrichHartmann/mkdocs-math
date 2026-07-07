@@ -480,7 +480,6 @@ class Plugin(BasePlugin):
                 continue
             if meta.get('type') != 'math-article':
                 continue
-            is_draft = meta.get('draft', False)
             # Compute relative URL from the index page to this article
             from posixpath import relpath as posix_relpath
             rel_url = posix_relpath(f.url, start=page.file.url.rsplit('/', 1)[0] if '/' in page.file.url else '')
@@ -493,26 +492,44 @@ class Plugin(BasePlugin):
                 'url': rel_url,
                 'tagline': meta.get('tagline', ''),
                 'publications': meta.get('publications', {}),
-                'draft': is_draft,
+                'status': meta.get('status', '900 Uncategorized'),
             })
 
-        # Sort by date descending
-        articles.sort(key=lambda a: a['date'], reverse=True)
-
-        # Generate listing as markdown list with taglines
-        lines = []
+        # Group by status, sort groups lexicographically (numeric prefix gives order)
+        from collections import defaultdict
+        groups = defaultdict(list)
         for art in articles:
-            year = art['date'][:4] if art['date'] else ''
-            draft_marker = ' *(draft)*' if art.get('draft') else ''
-            parts = [f'**[{art["title"]}]({art["url"]})** ({year}){draft_marker}']
-            if art['doi']:
-                parts.append(f'[DOI](https://doi.org/{art["doi"]})')
-            for name, url in (art.get('publications') or {}).items():
-                parts.append(f'[{name}]({url})')
-            line = ' · '.join(parts)
-            if art.get('tagline'):
-                line += '<br>\n  *' + art['tagline'] + '*'
-            lines.append(f'- {line}')
+            groups[art['status']].append(art)
+
+        # Sort each group by date descending
+        for arts in groups.values():
+            arts.sort(key=lambda a: a['date'], reverse=True)
+
+        # Sort status keys lexicographically
+        sorted_statuses = sorted(groups.keys())
+
+        # Strip numeric prefix for display: "100 Published" -> "Published"
+        import re
+        def strip_prefix(status):
+            return re.sub(r'^\d+\s+', '', status)
+
+        # Generate listing with status headers
+        lines = []
+        for status in sorted_statuses:
+            display_status = strip_prefix(status)
+            lines.append(f'**{display_status}**')
+            lines.append('')
+            for art in groups[status]:
+                year = art['date'][:4] if art['date'] else ''
+                parts = [f'**[{art["title"]}]({art["url"]})** ({year})']
+                if art['doi']:
+                    parts.append(f'[DOI](https://doi.org/{art["doi"]})')
+                for name, url in (art.get('publications') or {}).items():
+                    parts.append(f'[{name}]({url})')
+                line = ' · '.join(parts)
+                if art.get('tagline'):
+                    line += '<br>\n  *' + art['tagline'] + '*'
+                lines.append(f'- {line}')
             lines.append('')
 
         listing = '\n'.join(lines)

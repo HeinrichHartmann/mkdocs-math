@@ -75,8 +75,9 @@ def lint_file(path: Path, bib_keys: Optional[set[str]] = None) -> LintResult:
 
     for env in envs:
         # E001: environment content is suspiciously long (> 80 lines)
+        # Skip proofs — they can legitimately be long
         content_lines = env.content.count('\n')
-        if content_lines > 80:
+        if content_lines > 80 and env.env_name.lower() != 'proof':
             env_line = body_start + body[:env.start].count('\n')
             result.warn(env_line, 'E001',
                         f'{env.env_name} environment is {content_lines} lines long — '

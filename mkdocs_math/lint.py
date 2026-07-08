@@ -160,7 +160,7 @@ def lint_cmd(files: tuple[Path], bib: Optional[Path]):
             total_warnings += len(result.warnings)
 
     if total_warnings:
-        click.echo(f"\n{total_warnings} warning(s)")
+        click.echo(f"\n{total_warnings} warning(s) in {len(files)} file(s)")
         sys.exit(1)
     else:
         click.echo(f"OK — {len(files)} file(s) checked")

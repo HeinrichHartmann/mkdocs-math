@@ -90,19 +90,14 @@ def lint_file(path: Path, bib_keys: Optional[set[str]] = None) -> LintResult:
                         f'environment likely swallowed the next section')
 
     # E003: lines that look like environments but don't parse
-    # Pattern: **Word.** or **Word (stuff).** that isn't matched by the parser
-    env_starts = {env.start for env in envs}
+    # Compare line numbers of parsed environments against bold patterns in the body
+    env_lines = {body_start + body[:env.start].count('\n') for env in envs}
     for i, line in enumerate(lines):
         m = re.match(r'^\*\*([A-Z][a-zA-Z ]*?)(?:\s*\(.*?\))?\.\*\*', line)
-        if m:
-            # Find the position in the full content
-            pos = sum(len(l) + 1 for l in lines[:i])
-            # Adjust for frontmatter
-            body_pos = pos - (sum(len(l) + 1 for l in lines[:body_start]))
-            if body_pos >= 0 and body_pos not in env_starts:
-                result.warn(i + 1, 'E003',
-                            f'looks like an environment header '
-                            f'(**{m.group(1)}.**) but was not parsed as one')
+        if m and (i + 1) not in env_lines:
+            result.warn(i + 1, 'E003',
+                        f'looks like an environment header '
+                        f'(**{m.group(1)}.**) but was not parsed as one')
 
     # ── Citation checks ─────────────────────────────────────────────────
 

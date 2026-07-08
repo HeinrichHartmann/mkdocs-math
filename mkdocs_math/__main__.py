@@ -3,6 +3,7 @@
 import click
 from .export import cli as export_cli
 from .lint import lint_cmd
+from .outline import outline_cmd
 
 
 @click.group()
@@ -17,8 +18,9 @@ for _name in list(export_cli.list_commands(None)):
     if _cmd:
         cli.add_command(_cmd, _name)
 
-# Register lint
+# Register lint and outline
 cli.add_command(lint_cmd, 'lint')
+cli.add_command(outline_cmd, 'outline')
 
 
 def main():

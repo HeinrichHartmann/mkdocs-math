@@ -54,10 +54,15 @@ def extract_outline(path: Path) -> dict:
         # Extract citations within this environment
         env_cites = set(m.group(1) for m in re.finditer(r'\[@(\w+)', env.content))
 
+        # Extract anchor {#id} from the environment header line
+        anchor_match = re.search(r'\{#([a-zA-Z0-9:\-]+)\}', env.content[:200])
+        anchor = anchor_match.group(1) if anchor_match else None
+
         entry = {
             'type': 'environment',
             'env_name': env.env_name,
             'label': env.label,
+            'anchor': anchor,
             'lines': content_lines,
             'line': line,
             'pos': env.start,
@@ -107,10 +112,12 @@ def format_outline_text(outline: dict) -> str:
         if el['type'] == 'heading':
             indent = '  ' * (el['level'] - 2)
             lines.append(f"{indent}{'#' * el['level']} {el['title']}  (L{el['line']})")
+
         elif el['type'] == 'environment':
             label = f" ({el['label']})" if el.get('label') else ''
+            anchor = f"  {{#{el['anchor']}}}" if el.get('anchor') else ''
             cites = f"  [{', '.join(el['citations'])}]" if el.get('citations') else ''
-            lines.append(f"    {el['env_name']}{label}  [{el['lines']}L]  (L{el['line']}){cites}")
+            lines.append(f"    {el['env_name']}{label}{anchor}  (L{el['line']}+{el['lines']}){cites}")
 
     # Citations summary
     if outline['citations']:

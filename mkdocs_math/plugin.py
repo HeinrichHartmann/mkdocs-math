@@ -847,20 +847,23 @@ class Plugin(BasePlugin):
         if citation_count == 0:
             return markdown
 
-        # Pattern: [@citekey] (single citation only, no semicolons)
-        pattern = re.compile(r'\[@([a-zA-Z0-9_:-]+)\]')
+        # Pattern: [@citekey] or [@citekey, locator text]
+        pattern = re.compile(r'\[@([a-zA-Z0-9_:-]+)(?:,\s*([^\]]+))?\]')
 
         replacements = 0
 
         def replace_citation(match: re.Match) -> str:
             nonlocal replacements
             cite_key = match.group(1)
+            locator = match.group(2)
 
             # Get citetag from registry if it exists
             citetag = self.registry.get_citetag(cite_key)
             if citetag:
                 replacements += 1
-                # Return: [CiteTag][@key]
+                # Append locator to the visible tag: [CiteTag, Theorem 2.3][@key]
+                if locator:
+                    return f"[{citetag}, {locator.strip()}][@{cite_key}]"
                 return f"[{citetag}][@{cite_key}]"
 
             # No citetag, return original

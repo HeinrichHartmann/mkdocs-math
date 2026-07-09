@@ -18,6 +18,8 @@ def convert_citations_to_latex(markdown: str) -> str:
     This runs before environment parsing so citations in labels, content,
     and everywhere else get uniformly converted to LaTeX.
 
+    Supports locators: [@key, Theorem 2.3] → \citep[Theorem 2.3]{key}
+
     Args:
         markdown: Markdown text with [@key] citation syntax
 
@@ -25,31 +27,43 @@ def convert_citations_to_latex(markdown: str) -> str:
         Markdown with citations converted to \citep{} commands
 
     Examples:
-        Input:  "See [@Smith2020] for details"
-        Output: "See \citep{Smith2020} for details"
-
-        Input:  "[@Smith2020; @Jones2021]"
-        Output: "\citep{Smith2020,Jones2021}"
+        "See [@Smith2020] for details"           → "See \citep{Smith2020} for details"
+        "[@Smith2020; @Jones2021]"                → "\citep{Smith2020,Jones2021}"
+        "[@Smith2020, Theorem 2.3]"              → "\citep[Theorem 2.3]{Smith2020}"
+        "[@Smith2020, p. 5; @Jones2021, Ch. 3]"  → "\citep[p. 5]{Smith2020}\citep[Ch. 3]{Jones2021}"
     """
+    def parse_single_cite(text):
+        """Parse 'key' or 'key, locator' into (key, locator_or_None)."""
+        text = text.strip()
+        if text.startswith('@'):
+            text = text[1:]
+        # Split on first comma: key, locator
+        if ', ' in text:
+            key, locator = text.split(', ', 1)
+            return key.strip(), locator.strip()
+        return text.strip(), None
+
     def replace_citation(match):
         content = match.group(1)
-        # Extract all keys from the citation block
-        # Note: content is like "key1; @key2" because outer pattern matched [@
-        # So first key doesn't have @, but subsequent ones do
-        keys = []
-        for part in content.split(';'):
-            part = part.strip()
-            if part.startswith('@'):
-                keys.append(part[1:])  # Remove @ prefix
-            elif part:  # First key (no @ prefix)
-                keys.append(part)
+        # Split by semicolons for multiple citations
+        parts = content.split(';')
+        cites = [parse_single_cite(p) for p in parts]
 
-        if keys:
+        # If no locators and multiple keys, combine into one \citep
+        if len(cites) > 1 and all(loc is None for _, loc in cites):
+            keys = [k for k, _ in cites]
             return '\\citep{' + ','.join(keys) + '}'
-        return match.group(0)  # Return unchanged if no keys found
+
+        # Otherwise emit one \citep per citation
+        result = []
+        for key, locator in cites:
+            if locator:
+                result.append(f'\\citep[{locator}]{{{key}}}')
+            else:
+                result.append(f'\\citep{{{key}}}')
+        return ''.join(result)
 
     # Pattern: [@...] with any content inside
-    # Use [^\]] to properly escape the ] in the character class
     return re.sub(r'\[@([^\]]+)\]', replace_citation, markdown)
 
 

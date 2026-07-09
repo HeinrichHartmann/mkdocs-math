@@ -103,11 +103,7 @@ def lint_file(path: Path, bib_keys: Optional[set[str]] = None) -> LintResult:
     # ── Citation checks ─────────────────────────────────────────────────
 
     for i, line in enumerate(lines):
-        # C001: citation with locator inside brackets: [@Key, Theorem 2]
-        for m in re.finditer(r'\[@(\w+),\s*[^@\]]+\]', line):
-            result.warn(i + 1, 'C001',
-                        f'citation locator inside brackets: {m.group(0)} — '
-                        f'move locator outside: [@{m.group(1)}], ...')
+        # C001: removed — locators inside brackets [@key, Theorem 2] are now supported
 
         # C002: multiple citation keys without semicolons: [@Key1, @Key2]
         # (correct syntax uses semicolons: [@Key1; @Key2])
@@ -123,6 +119,65 @@ def lint_file(path: Path, bib_keys: Optional[set[str]] = None) -> LintResult:
                 if key not in bib_keys:
                     result.warn(i + 1, 'C003',
                                 f'citation key not found in bib: @{key}')
+
+    # ── Display math in list items ───────────────────────────────────────
+
+    # M001: $$ inside a list item with < 4-space indent or missing blank line.
+    # Python-Markdown requires 4-space indent for list continuation blocks.
+    # Without it, $$ breaks out of the <li> and arithmatex won't process it,
+    # causing MathJax to render it with wrong sizing.
+    in_list = False
+    in_display_math = False
+    list_indent = 0
+    for i, line in enumerate(lines):
+        # Detect ordered/unordered list item start
+        m = re.match(r'^(\s*)\d+\.\s', line) or re.match(r'^(\s*)[-*+]\s', line)
+        if m:
+            in_list = True
+            list_indent = len(m.group(1)) + 4  # continuation needs 4 spaces past marker start
+            continue
+
+        # A non-blank, non-indented line ends the list context
+        if in_list and line.strip() and not line.startswith(' '):
+            in_list = False
+            continue
+
+        # Track $$ pairs: only check the opening $$
+        if in_list and line.strip() == '$$':
+            if not in_display_math:
+                # Opening $$
+                in_display_math = True
+                actual_indent = len(line) - len(line.lstrip())
+                if actual_indent < list_indent:
+                    result.warn(i + 1, 'M001',
+                                f'display math $$ in list item has {actual_indent}-space indent '
+                                f'(need {list_indent}) — will break out of list')
+                elif i > 0 and lines[i - 1].strip():
+                    result.warn(i + 1, 'M001',
+                                f'display math $$ in list item missing blank line before it '
+                                f'— arithmatex block processor will not match')
+            else:
+                # Closing $$
+                in_display_math = False
+
+    # ── Line length checks ──────────────────────────────────────────────
+
+    # L001: line exceeds hard max of 150 characters.
+    # Skip frontmatter and lines that are a single URL or image reference.
+    in_frontmatter = False
+    for i, line in enumerate(lines):
+        if i == 0 and line == '---':
+            in_frontmatter = True
+            continue
+        if in_frontmatter:
+            if line == '---':
+                in_frontmatter = False
+            continue
+        if len(line) > 150:
+            if re.match(r'^\s*!?\[.*\]\(.*\)\s*$', line):
+                continue
+            result.warn(i + 1, 'L001',
+                        f'line is {len(line)} characters (hard max 150)')
 
     # ── Cross-reference checks ──────────────────────────────────────────
 

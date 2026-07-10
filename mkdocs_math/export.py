@@ -101,7 +101,21 @@ def pandoc_to_latex(markdown: str, lua_filter_path: Path, bib_file: Optional[Pat
     if result.returncode != 0:
         raise RuntimeError(f"Pandoc failed: {result.stderr}")
 
-    return result.stdout
+    return fix_dangling_qed(result.stdout)
+
+
+def fix_dangling_qed(latex_body: str) -> str:
+    """Strip blank line(s) immediately before every \\end{proof}.
+
+    Pandoc always emits a blank line before a closing \\end{proof}. A blank
+    line is a \\par in LaTeX, which force-closes the paragraph before
+    \\end{proof} fires amsthm's automatic \\qed. Landing outside that
+    paragraph, \\qed opens a new one containing only itself -- always
+    flush right, always alone, regardless of how much room the previous
+    line had. Removing the blank line lets \\qed attach to the last line
+    of the proof as intended.
+    """
+    return re.sub(r'\n[ \t]*\n+(\\end\{proof\})', r'\n\1', latex_body)
 
 
 def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Path] = None, mobile: bool = False, with_url: bool = True, with_doi: bool = True) -> str:

@@ -214,9 +214,20 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
         hide_items = [hide_items]
     show_toc = 'outline' not in hide_items
 
+    # Depth matches the web outline (plugin.py's outline_depth, default 2,
+    # overridable via the same frontmatter key). The pandoc heading shift
+    # (## -> \section, ### -> \subsection, ...) puts outline_depth on the
+    # same 1-based scale as LaTeX's \c@tocdepth, so this is a direct
+    # forward, not a re-derived constant.
+    try:
+        toc_depth = int(meta.get('outline_depth', 2))
+        toc_depth = max(1, min(toc_depth, 6))
+    except (ValueError, TypeError):
+        toc_depth = 2
+
     toc_section = ""
     if show_toc:
-        toc_section = "\\tableofcontents\n"
+        toc_section = f"\\setcounter{{tocdepth}}{{{toc_depth}}}\n\\tableofcontents\n"
 
     # Subtitle/tagline
     subtitle_block = ""

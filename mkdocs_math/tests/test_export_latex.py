@@ -68,3 +68,45 @@ class TestFixDanglingQed:
     def test_no_proof_environments_is_a_noop(self):
         latex = "Some text with no proofs at all.\n"
         assert fix_dangling_qed(latex) == latex
+
+
+class TestTocDepthForwarding:
+    """wrap_latex_document forwards frontmatter outline_depth to LaTeX's
+    tocdepth counter, matching the web outline's default/override so the
+    PDF table of contents shows the same depth as the web page outline.
+    """
+
+    BASE_META = {"title": "Test Article", "author": "Test Author"}
+
+    def test_defaults_to_depth_two(self):
+        doc = wrap_latex_document(dict(self.BASE_META), "Body.")
+        assert "\\setcounter{tocdepth}{2}" in doc
+
+    def test_honors_outline_depth_override(self):
+        meta = dict(self.BASE_META, outline_depth=3)
+        doc = wrap_latex_document(meta, "Body.")
+        assert "\\setcounter{tocdepth}{3}" in doc
+
+    def test_clamps_out_of_range_values(self):
+        meta = dict(self.BASE_META, outline_depth=99)
+        doc = wrap_latex_document(meta, "Body.")
+        assert "\\setcounter{tocdepth}{6}" in doc
+
+        meta = dict(self.BASE_META, outline_depth=0)
+        doc = wrap_latex_document(meta, "Body.")
+        assert "\\setcounter{tocdepth}{1}" in doc
+
+    def test_invalid_outline_depth_falls_back_to_default(self):
+        meta = dict(self.BASE_META, outline_depth="not-a-number")
+        doc = wrap_latex_document(meta, "Body.")
+        assert "\\setcounter{tocdepth}{2}" in doc
+
+    def test_no_toc_when_outline_hidden(self):
+        meta = dict(self.BASE_META, hide=["outline"])
+        doc = wrap_latex_document(meta, "Body.")
+        assert "\\tableofcontents" not in doc
+        assert "\\setcounter{tocdepth}" not in doc
+
+    def test_tocdepth_precedes_tableofcontents(self):
+        doc = wrap_latex_document(dict(self.BASE_META), "Body.")
+        assert doc.index("\\setcounter{tocdepth}") < doc.index("\\tableofcontents")

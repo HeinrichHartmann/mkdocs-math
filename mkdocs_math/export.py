@@ -101,7 +101,21 @@ def pandoc_to_latex(markdown: str, lua_filter_path: Path, bib_file: Optional[Pat
     if result.returncode != 0:
         raise RuntimeError(f"Pandoc failed: {result.stderr}")
 
-    return result.stdout
+    return fix_dangling_qed(result.stdout)
+
+
+def fix_dangling_qed(latex_body: str) -> str:
+    """Strip blank line(s) immediately before every \\end{proof}.
+
+    Pandoc always emits a blank line before a closing \\end{proof}. A blank
+    line is a \\par in LaTeX, which force-closes the paragraph before
+    \\end{proof} fires amsthm's automatic \\qed. Landing outside that
+    paragraph, \\qed opens a new one containing only itself -- always
+    flush right, always alone, regardless of how much room the previous
+    line had. Removing the blank line lets \\qed attach to the last line
+    of the proof as intended.
+    """
+    return re.sub(r'\n[ \t]*\n+(\\end\{proof\})', r'\n\1', latex_body)
 
 
 def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Path] = None, mobile: bool = False, with_url: bool = True, with_doi: bool = True) -> str:
@@ -200,9 +214,20 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
         hide_items = [hide_items]
     show_toc = 'outline' not in hide_items
 
+    # Depth matches the web outline (plugin.py's outline_depth, default 2,
+    # overridable via the same frontmatter key). The pandoc heading shift
+    # (## -> \section, ### -> \subsection, ...) puts outline_depth on the
+    # same 1-based scale as LaTeX's \c@tocdepth, so this is a direct
+    # forward, not a re-derived constant.
+    try:
+        toc_depth = int(meta.get('outline_depth', 2))
+        toc_depth = max(1, min(toc_depth, 6))
+    except (ValueError, TypeError):
+        toc_depth = 2
+
     toc_section = ""
     if show_toc:
-        toc_section = "\\tableofcontents\n"
+        toc_section = f"\\setcounter{{tocdepth}}{{{toc_depth}}}\n\\tableofcontents\n"
 
     # Subtitle/tagline
     subtitle_block = ""

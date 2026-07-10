@@ -101,7 +101,9 @@ def pandoc_to_latex(markdown: str, lua_filter_path: Path, bib_file: Optional[Pat
     if result.returncode != 0:
         raise RuntimeError(f"Pandoc failed: {result.stderr}")
 
-    return fix_dangling_qed(result.stdout)
+    latex_body = fix_dangling_qed(result.stdout)
+    latex_body = fix_list_after_env_head(latex_body)
+    return latex_body
 
 
 def fix_dangling_qed(latex_body: str) -> str:
@@ -116,6 +118,34 @@ def fix_dangling_qed(latex_body: str) -> str:
     of the proof as intended.
     """
     return re.sub(r'\n[ \t]*\n+(\\end\{proof\})', r'\n\1', latex_body)
+
+
+# Theorem-like environments defined via \newtheorem in wrap_latex_document.
+_THEOREM_ENV_NAMES = (
+    'theorem', 'lemma', 'proposition', 'corollary',
+    'definition', 'example', 'remark',
+)
+
+_LIST_AFTER_ENV_HEAD_RE = re.compile(
+    r'(\\begin\{(?:' + '|'.join(_THEOREM_ENV_NAMES) + r')\}(?:\[[^\]]*\])?\s*'
+    r'(?:\\label\{[^}]*\}\s*)?)'
+    r'(\\begin\{(?:itemize|enumerate)\})'
+)
+
+
+def fix_list_after_env_head(latex_body: str) -> str:
+    """Force a paragraph break before a list that opens a theorem-like environment.
+
+    amsthm renders an environment's optional title as the label of a
+    trivlist \\item, and the body text that follows becomes that same
+    item's paragraph -- no genuine \\par has fired yet. When the body's
+    first content is a list (e.g. a definition given as bullet points),
+    the list's first item runs onto the header's line instead of
+    starting fresh, since \\begin{itemize}/\\begin{enumerate} alone
+    don't force horizontal mode to close first. \\leavevmode\\par right
+    before the list does.
+    """
+    return _LIST_AFTER_ENV_HEAD_RE.sub(r'\1\\leavevmode\\par\n\2', latex_body)
 
 
 def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Path] = None, mobile: bool = False, with_url: bool = True, with_doi: bool = True) -> str:

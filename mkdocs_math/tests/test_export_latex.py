@@ -5,7 +5,7 @@ These test the string-transform functions directly -- no pandoc or
 pdflatex invocation needed.
 """
 
-from mkdocs_math.export import fix_dangling_qed, wrap_latex_document
+from mkdocs_math.export import fix_dangling_qed, fix_list_after_env_head, wrap_latex_document
 
 
 class TestFixDanglingQed:
@@ -110,3 +110,61 @@ class TestTocDepthForwarding:
     def test_tocdepth_precedes_tableofcontents(self):
         doc = wrap_latex_document(dict(self.BASE_META), "Body.")
         assert doc.index("\\setcounter{tocdepth}") < doc.index("\\tableofcontents")
+
+
+class TestFixListAfterEnvHead:
+    """fix_list_after_env_head forces a paragraph break before a list that
+    opens a theorem-like environment's body, so the list's first item
+    starts on its own line instead of running onto the header.
+    """
+
+    def test_inserts_leavevmode_par_before_itemize(self):
+        latex = (
+            "\\begin{definition}[Title]\n"
+            "\n"
+            "\\label{def:x}\n"
+            "\n"
+            "\\begin{itemize}\n"
+            "\\item First.\n"
+            "\\end{itemize}\n"
+            "\n"
+            "\\end{definition}\n"
+        )
+        result = fix_list_after_env_head(latex)
+        assert "\\leavevmode\\par\n\\begin{itemize}" in result
+
+    def test_inserts_before_enumerate_too(self):
+        latex = "\\begin{theorem}\n\\begin{enumerate}\n\\item One.\n\\end{enumerate}\n\\end{theorem}\n"
+        result = fix_list_after_env_head(latex)
+        assert "\\leavevmode\\par\n\\begin{enumerate}" in result
+
+    def test_works_without_optional_title_or_label(self):
+        latex = "\\begin{lemma}\n\\begin{itemize}\n\\item Foo.\n\\end{itemize}\n\\end{lemma}\n"
+        result = fix_list_after_env_head(latex)
+        assert "\\begin{lemma}\n\\leavevmode\\par\n\\begin{itemize}" in result
+
+    def test_all_theorem_like_environments_covered(self):
+        for env in ("theorem", "lemma", "proposition", "corollary",
+                    "definition", "example", "remark"):
+            latex = f"\\begin{{{env}}}\n\\begin{{itemize}}\n\\item X.\n\\end{{itemize}}\n\\end{{{env}}}\n"
+            result = fix_list_after_env_head(latex)
+            assert "\\leavevmode\\par" in result, f"not fixed for {env}"
+
+    def test_no_effect_when_body_is_prose(self):
+        latex = "\\begin{definition}[Title]\nSome prose body.\n\\end{definition}\n"
+        assert fix_list_after_env_head(latex) == latex
+
+    def test_no_effect_on_a_list_mid_body(self):
+        # Only the *opening* list needs the break; a list later in the
+        # body already follows real paragraph text, which closes normally.
+        latex = (
+            "\\begin{definition}[Title]\n"
+            "Some prose first.\n\n"
+            "\\begin{itemize}\n\\item X.\n\\end{itemize}\n"
+            "\\end{definition}\n"
+        )
+        assert fix_list_after_env_head(latex) == latex
+
+    def test_no_effect_on_unrelated_environments(self):
+        latex = "\\begin{itemize}\n\\item Standalone list, no theorem wrapper.\n\\end{itemize}\n"
+        assert fix_list_after_env_head(latex) == latex

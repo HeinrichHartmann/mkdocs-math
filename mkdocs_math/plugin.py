@@ -578,6 +578,10 @@ class Plugin(BasePlugin):
         # Inject outline (configurable via outline_enabled and outline_depth)
         markdown = inject_chapter_outline(markdown, page=page, config=config)
 
+        # Strip print-only blocks, keep web blocks
+        from .preprocess_pandoc import strip_target_blocks
+        markdown = strip_target_blocks(markdown, keep='web')
+
         # Inject preamble (using configured preamble_file, resolved relative to mkdocs.yml)
         preamble_file = self.config.get('preamble_file', '')
         if preamble_file:

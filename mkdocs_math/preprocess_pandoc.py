@@ -101,6 +101,28 @@ def convert_references_to_latex(markdown: str) -> str:
     return re.sub(r'\[#([a-zA-Z0-9:\-]+)\]', r'\\ref{\1}', markdown)
 
 
+def strip_target_blocks(markdown: str, keep: str) -> str:
+    """Keep blocks for one target, strip the other.
+
+    Blocks are delimited by HTML comments:
+        <!--web-->  ... <!--/web-->   — web-only content
+        <!--print--> ... <!--/print--> — print/PDF-only content
+
+    Args:
+        markdown: Markdown text with target blocks
+        keep: Which target to keep ("web" or "print")
+    """
+    strip = 'print' if keep == 'web' else 'web'
+    # Remove blocks for the stripped target
+    markdown = re.sub(
+        rf'<!--\s*{strip}\s*-->.*?<!--\s*/{strip}\s*-->',
+        '', markdown, flags=re.DOTALL
+    )
+    # Remove markers for the kept target (keep the content)
+    markdown = re.sub(rf'<!--\s*/?{keep}\s*-->', '', markdown)
+    return markdown
+
+
 def strip_admonitions(markdown: str) -> str:
     """Remove MkDocs admonition blocks (!!! type ...) for PDF export."""
     lines = markdown.split('\n')
@@ -145,7 +167,9 @@ def convert_environments_to_divs(markdown: str) -> str:
                 :::
     """
     # Preprocessing steps (order matters):
-    # 0. Strip admonitions (MkDocs-only syntax)
+    # 0a. Strip web-only blocks, keep print blocks
+    markdown = strip_target_blocks(markdown, keep='print')
+    # 0b. Strip admonitions (MkDocs-only syntax)
     markdown = strip_admonitions(markdown)
 
     # 1. Convert citations [@key] → \citep{key}

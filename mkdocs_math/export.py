@@ -304,6 +304,9 @@ def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Pat
 \\newtheorem{{definition}}[theorem]{{Definition}}
 \\newtheorem{{example}}[theorem]{{Example}}
 \\newtheorem{{remark}}[theorem]{{Remark}}
+\\newtheorem{{adjunctions}}[theorem]{{Adjunctions}}
+\\newtheorem{{realizations}}[theorem]{{Realizations}}
+\\newtheorem{{compatibilities}}[theorem]{{Compatibilities}}
 
 % Add parentheses around theorem numbers
 \\renewcommand{{\\thetheorem}}{{(\\arabic{{theorem}})}}

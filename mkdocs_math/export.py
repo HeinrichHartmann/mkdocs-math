@@ -401,6 +401,16 @@ def compile_pdf(tex_file: Path, output_pdf: Path, working_dir: Path, meta_dir: O
     if not pdf_file.exists():
         raise RuntimeError(f"PDF not created. Check {working_dir}/{stem}.log for errors")
 
+    # Report overfull boxes from the log
+    log_file = working_dir / f"{stem}.log"
+    if log_file.exists():
+        log_text = log_file.read_text(errors='replace')
+        overfull = [l.strip() for l in log_text.splitlines() if 'Overfull' in l and 'hbox' in l]
+        if overfull:
+            click.echo(f"⚠ {len(overfull)} overfull hbox warnings:")
+            for line in overfull:
+                click.echo(f"  {line}")
+
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
     output_pdf.write_bytes(pdf_file.read_bytes())
 

@@ -556,9 +556,35 @@ class Plugin(BasePlugin):
             lines.append('')
 
         listing = '\n'.join(lines)
+
+        # {{FLAT_ARTICLES}}: chronological list without status headers
+        flat_lines = []
+        all_articles = sorted(
+            [a for group in groups.values() for a in group],
+            key=lambda a: a['date'], reverse=True
+        )
+        for art in all_articles:
+            year = art['date'][:4] if art['date'] else ''
+            parts = [f'**[{art["title"]}]({art["url"]})** ({year})']
+            if art.get('notes_dir'):
+                parts.append(f'[notes]({art["notes_dir"]})')
+            if art['doi']:
+                parts.append(f'[DOI](https://doi.org/{art["doi"]})')
+            for name, url in (art.get('publications') or {}).items():
+                parts.append(f'[{name}]({url})')
+            line = ' · '.join(parts)
+            if art.get('tagline'):
+                line += '<br>\n  *' + art['tagline'] + '*'
+            flat_lines.append(f'- {line}')
+            flat_lines.append('')
+        flat_listing = '\n'.join(flat_lines)
+
+        if '{{FLAT_ARTICLES}}' in markdown:
+            markdown = markdown.replace('{{FLAT_ARTICLES}}', flat_listing)
         if '{{ARTICLES}}' in markdown:
-            return markdown.replace('{{ARTICLES}}', listing)
-        return markdown + '\n\n' + listing
+            markdown = markdown.replace('{{ARTICLES}}', listing)
+            return markdown
+        return markdown
 
     def on_page_markdown(self, markdown, page, config, files):
         """Process markdown for each page."""

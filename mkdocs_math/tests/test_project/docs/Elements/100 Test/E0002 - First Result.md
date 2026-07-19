@@ -6,7 +6,7 @@ kind: proposition
 status: established
 notation: E0001
 depends_on: [E0001]
-checked: [numeric, adversarial]
+checked: [numeric, symbolic]
 published_at: [TestKey2026]
 ---
 

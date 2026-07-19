@@ -19,7 +19,7 @@ VALID_KINDS = frozenset([
     'proposition', 'theorem', 'corollary', 'example',
 ])
 VALID_STATUSES = frozenset(['draft', 'established', 'superseded'])
-VALID_CHECKED = frozenset(['numeric', 'adversarial', 'lean'])
+VALID_CHECKED = frozenset(['numeric', 'symbolic', 'ai', 'human', 'formal'])
 NOTATION_KINDS = frozenset(['notation', 'environment'])
 
 # Nav-label abbreviations per kind ('environment' is a legacy alias of 'notation')
@@ -67,6 +67,7 @@ class ElementNode:
         self.notation = meta.get('notation')
         self.extends = meta.get('extends')
         self.checked = meta.get('checked') or []
+        self.validation = meta.get('validation') or {}
         self.published_at = meta.get('published_at') or []
         self.source = meta.get('source') or []
         self.superseded_by = meta.get('superseded_by')

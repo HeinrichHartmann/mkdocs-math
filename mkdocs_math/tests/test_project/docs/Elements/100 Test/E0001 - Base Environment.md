@@ -5,7 +5,7 @@ title: Base Environment
 kind: environment
 status: established
 depends_on: []
-checked: [adversarial]
+checked: [human]
 published_at: [TestKey2026]
 ---
 

@@ -546,6 +546,7 @@ class Plugin(BasePlugin):
                 'tagline': meta.get('tagline', ''),
                 'publications': meta.get('publications', {}),
                 'status': meta.get('status', '900 Uncategorized'),
+                'target': meta.get('target', ''),
                 'notes_dir': notes_dir,
             })
 
@@ -555,9 +556,11 @@ class Plugin(BasePlugin):
         for art in articles:
             groups[art['status']].append(art)
 
-        # Sort each group by date descending
-        for arts in groups.values():
-            arts.sort(key=lambda a: a['date'], reverse=True)
+        # Sort: shipped groups (9xx: Published/Parked) by date descending
+        # (recency); queued groups (Active/Next/Later) ascending — planned
+        # reading/writing order.
+        for status, arts in groups.items():
+            arts.sort(key=lambda a: a['date'], reverse=status.startswith('9'))
 
         # Sort status keys lexicographically
         sorted_statuses = sorted(groups.keys())
@@ -576,6 +579,8 @@ class Plugin(BasePlugin):
             for art in groups[status]:
                 year = art['date'][:4] if art['date'] else ''
                 parts = [f'**[{art["title"]}]({art["url"]})** ({year})']
+                if art.get('target'):
+                    parts.append(f'<span class="article-target article-target-{art["target"]}">{art["target"]}</span>')
                 if art.get('notes_dir'):
                     parts.append(f'[notes]({art["notes_dir"]})')
                 if art['doi']:

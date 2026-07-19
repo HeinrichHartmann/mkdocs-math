@@ -387,6 +387,7 @@ class Plugin(BasePlugin):
         ("bib_by_default", config_options.Type(bool, default=True)),
         ("footnote_format", config_options.Type(str, default="{key}")),
         ("elements_dir", config_options.Type(str, default="Elements")),
+        ("lean_url", config_options.Type(str, default="")),
     )
 
     def __init__(self):
@@ -874,8 +875,12 @@ class Plugin(BasePlugin):
             chips.append(f'<span class="el-status el-status-{node.status}">{node.status}</span>')
 
         # Verification chips
+        lean_url = self.config.get('lean_url', '')
         for flag in node.checked:
-            chips.append(f'<span class="el-check" title="verified: {flag}">✓ {flag}</span>')
+            if flag == 'lean' and lean_url:
+                chips.append(f'<a class="el-check" href="{lean_url}" title="verified: {flag}">✓ {flag}</a>')
+            else:
+                chips.append(f'<span class="el-check" title="verified: {flag}">✓ {flag}</span>')
 
         # depends_on: not shown in the header (gets long); covered by prose
         # references and the generated "Used by" section.

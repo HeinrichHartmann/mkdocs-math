@@ -471,6 +471,7 @@ class Plugin(BasePlugin):
         self.elements_dir_path = elements_dir
         self.elements_registry = build_elements_registry(elements_dir, docs_dir)
         self.elements_backlinks = compute_backlinks(self.elements_registry)
+        self._files = files
 
         log.info(f"Elements registry: {len(self.elements_registry)} nodes")
         return files
@@ -703,17 +704,25 @@ class Plugin(BasePlugin):
         # Elements sidebar for all pages under Elements/
         elements_dir_name = self.config.get('elements_dir', 'Elements')
         if page.file.src_path.startswith(elements_dir_name + '/') and self.elements_registry:
+            # Hide the left navigation sidebar (Material reads page.meta.hide)
+            hide = list(page.meta.get('hide', []))
+            if 'navigation' not in hide:
+                hide.append('navigation')
+            page.meta['hide'] = hide
+
             sections = build_nav_sections(self.elements_registry)
-            # Compute relative URLs from this page to each node
+            # Compute relative URLs using dest paths (accurate for use_directory_urls)
             from posixpath import relpath
-            page_dir = page.file.src_path.rsplit('/', 1)[0]
+            page_dest_dir = page.file.dest_path.rsplit('/', 1)[0]
             for section in sections:
                 for node in section['nodes']:
-                    # src_path -> URL path (strip .md, add /)
-                    node_url = node['src_path']
-                    if node_url.endswith('.md'):
-                        node_url = node_url[:-3] + '/'
-                    node['url'] = relpath(node_url, page_dir)
+                    node_file = self._files.get_file_from_path(node['src_path'])
+                    if node_file:
+                        node_dest_dir = node_file.dest_path.rsplit('/', 1)[0]
+                        node['url'] = relpath(node_dest_dir, page_dest_dir)
+                    else:
+                        log.warning(f"[elements-nav] no file for {node['src_path']!r}")
+                        node['url'] = '#'
             context['elements_nav'] = {
                 'current_id': page.meta.get('id'),
                 'sections': sections,

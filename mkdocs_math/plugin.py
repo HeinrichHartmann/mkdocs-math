@@ -647,7 +647,7 @@ class Plugin(BasePlugin):
                 # Nav label: "E0001 . Not . Title"
                 abbrev = KIND_ABBREV.get(node.kind, node.kind)
                 page.meta['title'] = f'{node.id} . {abbrev} . {node.title}'
-            header = self._render_elements_header(node_id, page)
+            header = self._render_elements_header(node_id, page, markdown)
             backlinks = self._render_elements_backlinks(node_id, page)
             # Normalize H1 from frontmatter (single display truth, plain
             # title); the chip row goes ABOVE the title.
@@ -853,7 +853,7 @@ class Plugin(BasePlugin):
         safe_title = target.title.replace('"', "'")
         return f'[{target_id}](<{rel}> "{safe_title}"){{.el-ref}}'
 
-    def _render_elements_header(self, node_id: str, page) -> str:
+    def _render_elements_header(self, node_id: str, page, markdown: str = '') -> str:
         """Render compact badge-style metadata header for an Elements node.
 
         Semantic information (kind, status, verification, dependency IDs)
@@ -880,6 +880,22 @@ class Plugin(BasePlugin):
         if node.status != 'established':
             chips.append(f'<span class="el-status el-status-{node.status}">{node.status}</span>')
 
+        # Pre-scan for **Validation (...).**  environments to map types → anchors.
+        # Environments are numbered sequentially; we replicate that logic here
+        # for Validation environments so badges can link to on-page anchors.
+        validation_anchors = {}
+        env_counter = 0
+        for m in re.finditer(r'\*\*([A-Za-z]+)\s*(?:\(([^)]*)\))?\.\*\*', markdown):
+            env_name = m.group(1)
+            if env_name.lower() == 'proof':
+                continue
+            env_counter += 1
+            if env_name.lower() == 'validation':
+                label = m.group(2) or ''
+                for vtype in ('ai', 'human'):
+                    if vtype in label.lower():
+                        validation_anchors[vtype] = f'#validation-{env_counter}'
+
         # Verification chips
         validation_url = self.config.get('validation_url', '') or self.config.get('lean_url', '')
         for flag in node.checked:
@@ -887,6 +903,9 @@ class Plugin(BasePlugin):
             vfile = vinfo.get('file', '') if isinstance(vinfo, dict) else ''
             if vfile and validation_url:
                 href = f'{validation_url.rstrip("/")}/{vfile}'
+                chips.append(f'<a class="el-check" href="{href}" title="verified: {flag}">✓ {flag}</a>')
+            elif flag in validation_anchors:
+                href = validation_anchors[flag]
                 chips.append(f'<a class="el-check" href="{href}" title="verified: {flag}">✓ {flag}</a>')
             else:
                 chips.append(f'<span class="el-check" title="verified: {flag}">✓ {flag}</span>')

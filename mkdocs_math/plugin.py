@@ -642,12 +642,15 @@ class Plugin(BasePlugin):
                 page.meta['title'] = f'{abbrev} · {node.title}'
             header = self._render_elements_header(node_id, page)
             backlinks = self._render_elements_backlinks(node_id, page)
-            # Insert header after first heading
+            # Normalize H1 from frontmatter (single display truth, plain
+            # title); the chip row goes ABOVE the title.
             lines = markdown.split('\n')
             insert_pos = 0
             for i, line in enumerate(lines):
                 if line.strip().startswith('# '):
-                    insert_pos = i + 1
+                    if node:
+                        lines[i] = f'# {node.title}'
+                    insert_pos = i
                     break
             lines.insert(insert_pos, header)
             markdown = '\n'.join(lines) + backlinks
@@ -836,11 +839,12 @@ class Plugin(BasePlugin):
         from posixpath import relpath as posix_relpath
         page_dir = page.file.src_path.rsplit('/', 1)[0] if '/' in page.file.src_path else ''
         rel = posix_relpath(target.src_path, start=page_dir)
-        # Angle-bracket target handles spaces in filenames
+        # Angle-bracket target handles spaces in filenames; {.el-ref} marks
+        # the link as a system reference (attr_list, styled by site CSS)
         if with_title:
-            return f'[{target_id} — {target.title}](<{rel}>)'
+            return f'[{target_id} — {target.title}](<{rel}>){{.el-ref}}'
         safe_title = target.title.replace('"', "'")
-        return f'[{target_id}](<{rel}> "{safe_title}")'
+        return f'[{target_id}](<{rel}> "{safe_title}"){{.el-ref}}'
 
     def _render_elements_header(self, node_id: str, page) -> str:
         """Render compact badge-style metadata header for an Elements node.
@@ -856,8 +860,14 @@ class Plugin(BasePlugin):
 
         chips = []
 
-        # Kind chip (colored per kind via CSS class)
-        chips.append(f'<span class="el-kind el-kind-{node.kind}">{node.kind}</span>')
+        # ID badge leads the chip row: a self-link (canonical reference)
+        own_name = node.src_path.rsplit('/', 1)[-1]
+        chips.append(f'[{node.id}](<{own_name}>){{.el-id}}')
+
+        # Kind chip (colored per kind via CSS class).
+        # 'environment' is a legacy alias of 'notation'.
+        kind = 'notation' if node.kind == 'environment' else node.kind
+        chips.append(f'<span class="el-kind el-kind-{kind}">{kind}</span>')
 
         # Status chip: established is the norm, only flag deviations
         if node.status != 'established':
@@ -867,10 +877,8 @@ class Plugin(BasePlugin):
         for flag in node.checked:
             chips.append(f'<span class="el-check" title="verified: {flag}">✓ {flag}</span>')
 
-        # Relation fields: bare-ID links with tooltip titles
-        if node.uses:
-            links = ' '.join(self._element_link(uid, page, with_title=False) for uid in node.uses)
-            chips.append(f'<span class="el-field">uses {links}</span>')
+        # uses: not shown in the header (gets long); covered by prose
+        # references and the generated "Used by" section.
 
         if node.notation:
             chain = resolve_notation_chain(self.elements_registry, node_id)
@@ -902,6 +910,10 @@ class Plugin(BasePlugin):
             return ''
 
         lines = []
+        # Two blank lines (\n\n\n) terminate any open theorem environment,
+        # so the backlinks section never leaks into it.
+        lines.append('')
+        lines.append('')
         lines.append('')
         lines.append('---')
         lines.append('')
@@ -930,7 +942,8 @@ class Plugin(BasePlugin):
             if not target:
                 return None
             rel = posix_relpath(target.src_path, start=page_dir)
-            return f'[{eid}](<{rel}>)'
+            safe_title = target.title.replace('"', "'")
+            return f'[{eid}](<{rel}> "{safe_title}"){{.el-ref}}'
 
         lines = markdown.split('\n')
         result = []

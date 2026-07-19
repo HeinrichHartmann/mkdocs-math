@@ -22,9 +22,9 @@ VALID_STATUSES = frozenset(['draft', 'established', 'superseded'])
 VALID_CHECKED = frozenset(['numeric', 'adversarial', 'lean'])
 NOTATION_KINDS = frozenset(['notation', 'environment'])
 
-# Nav-label abbreviations per kind
+# Nav-label abbreviations per kind ('environment' is a legacy alias of 'notation')
 KIND_ABBREV = {
-    'environment': 'Env',
+    'environment': 'Not',
     'notation': 'Not',
     'definition': 'Def',
     'lemma': 'Lem',
@@ -33,6 +33,20 @@ KIND_ABBREV = {
     'corollary': 'Cor',
     'example': 'Ex',
 }
+
+# First body environment marker (e.g. "**Theorem.**", "**Notation (Sets).**")
+# used to infer kind: when frontmatter omits it.
+_ENV_MARKER = re.compile(r'^\*\*(Theorem|Proposition|Lemma|Corollary|Definition|Notation|Example)\b', re.M)
+
+
+def infer_kind_from_body(path: Path) -> str | None:
+    """Infer node kind from the first environment marker in the body."""
+    try:
+        content = path.read_text(encoding='utf-8')
+    except OSError:
+        return None
+    m = _ENV_MARKER.search(content)
+    return m.group(1).lower() if m else None
 
 
 class ElementNode:
@@ -44,7 +58,9 @@ class ElementNode:
         self.src_path = src_path  # relative to docs_dir
         self.id = meta.get('id', '')
         self.title = meta.get('title', '')
-        self.kind = meta.get('kind', '')
+        # kind: explicit in frontmatter, else inferred from the first
+        # environment marker in the body (**Theorem.** -> theorem)
+        self.kind = meta.get('kind') or infer_kind_from_body(path) or ''
         self.status = meta.get('status', '')
         self.uses = meta.get('uses') or []
         self.notation = meta.get('notation')

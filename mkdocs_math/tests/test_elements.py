@@ -250,20 +250,20 @@ class TestElementsBuildIntegration:
         assert "E0001" in content
         assert "E0002" in content
 
-    def test_node_h1_not_self_linked(self, build_test_project):
-        """The node's own ID in its H1 title must not be autolinked."""
+    def test_node_h1_is_plain_title(self, build_test_project):
+        """H1 is the plain frontmatter title; the ID lives in the chip row
+        as a self-link (class el-id), not in the heading."""
         html_file = self._find_node_html(build_test_project, "E0001")
         assert html_file, "E0001 HTML not found"
         content = html_file.read_text()
-        # The H1 contains "E0001 — Base Environment"
-        # It should NOT contain <a href="...">E0001</a> in the <h1>
         import re
         h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', content, re.DOTALL)
         assert h1_match, "No H1 found"
         h1_content = h1_match.group(1)
-        # E0001 should appear as text, not wrapped in <a>
-        assert 'E0001' in h1_content
-        assert '<a' not in h1_content or 'E0001</a>' not in h1_content
+        # H1 shows the title without the ID
+        assert 'E0001' not in h1_content
+        # The ID badge is a self-link in the metadata chip row
+        assert re.search(r'<a[^>]*class="el-id"[^>]*>E0001</a>', content)
 
     def test_links_are_relative_paths(self, build_test_project):
         """Generated links use relative file paths, not bare IDs."""

@@ -25,6 +25,7 @@ from .elements import (
     registry_to_json,
     compute_backlinks,
     resolve_notation_chain,
+    KIND_ABBREV,
 )
 
 log = logging.getLogger("mkdocs.plugins.math")
@@ -629,6 +630,28 @@ class Plugin(BasePlugin):
         # Register heading anchors first (before processing references)
         self._register_heading_anchors(markdown, page)
 
+        # Elements: metadata header, backlinks, nav title.
+        # Injected before citation processing so [@key] in the header
+        # (published_at) is resolved by the citation pipeline.
+        if self._is_elements_node(page):
+            node_id = page.meta.get('id')
+            node = self.elements_registry.get(node_id)
+            if node:
+                # Nav label: kind abbreviation prefix (e.g. "Thm · Title")
+                abbrev = KIND_ABBREV.get(node.kind, node.kind)
+                page.meta['title'] = f'{abbrev} · {node.title}'
+            header = self._render_elements_header(node_id, page)
+            backlinks = self._render_elements_backlinks(node_id, page)
+            # Insert header after first heading
+            lines = markdown.split('\n')
+            insert_pos = 0
+            for i, line in enumerate(lines):
+                if line.strip().startswith('# '):
+                    insert_pos = i + 1
+                    break
+            lines.insert(insert_pos, header)
+            markdown = '\n'.join(lines) + backlinks
+
         # Process citations first (before theorem environments)
         markdown = self._process_citations(markdown, page)
 
@@ -650,21 +673,6 @@ class Plugin(BasePlugin):
 
         # Resolve anchor references [#...] to numbered links
         markdown = self._resolve_anchor_references(markdown)
-
-        # Elements: metadata header, autolink E-IDs, backlinks
-        if self._is_elements_node(page):
-            node_id = page.meta.get('id')
-            header = self._render_elements_header(node_id, page)
-            backlinks = self._render_elements_backlinks(node_id, page)
-            # Insert header after first heading
-            lines = markdown.split('\n')
-            insert_pos = 0
-            for i, line in enumerate(lines):
-                if line.strip().startswith('# '):
-                    insert_pos = i + 1
-                    break
-            lines.insert(insert_pos, header)
-            markdown = '\n'.join(lines) + backlinks
 
         # Autolink E-IDs in all pages (if registry is populated)
         if self.elements_registry:
@@ -815,8 +823,12 @@ class Plugin(BasePlugin):
         except ValueError:
             return False
 
-    def _element_link(self, target_id: str, page) -> str:
-        """Build a markdown link to an element node, relative to `page`."""
+    def _element_link(self, target_id: str, page, with_title: bool = True) -> str:
+        """Build a markdown link to an element node, relative to `page`.
+
+        with_title=False renders just the bare ID as link text, with the
+        node title as a tooltip.
+        """
         target = self.elements_registry.get(target_id)
         if not target:
             return f'{target_id} (unresolved)'
@@ -825,53 +837,60 @@ class Plugin(BasePlugin):
         page_dir = page.file.src_path.rsplit('/', 1)[0] if '/' in page.file.src_path else ''
         rel = posix_relpath(target.src_path, start=page_dir)
         # Angle-bracket target handles spaces in filenames
-        return f'[{target_id} — {target.title}](<{rel}>)'
+        if with_title:
+            return f'[{target_id} — {target.title}](<{rel}>)'
+        safe_title = target.title.replace('"', "'")
+        return f'[{target_id}](<{rel}> "{safe_title}")'
 
     def _render_elements_header(self, node_id: str, page) -> str:
-        """Render metadata header block for an Elements node."""
+        """Render compact badge-style metadata header for an Elements node.
+
+        Semantic information (kind, status, verification, dependency IDs)
+        is rendered as a single chip row, visually separated from prose.
+        Styling hooks: .elements-metadata, .el-kind, .el-status-*, .el-check,
+        .el-field (CSS lives with the consuming site).
+        """
         node = self.elements_registry.get(node_id)
         if not node:
             return ''
 
+        chips = []
+
+        # Kind chip (colored per kind via CSS class)
+        chips.append(f'<span class="el-kind el-kind-{node.kind}">{node.kind}</span>')
+
+        # Status chip: established is the norm, only flag deviations
+        if node.status != 'established':
+            chips.append(f'<span class="el-status el-status-{node.status}">{node.status}</span>')
+
+        # Verification chips
+        for flag in node.checked:
+            chips.append(f'<span class="el-check" title="verified: {flag}">✓ {flag}</span>')
+
+        # Relation fields: bare-ID links with tooltip titles
+        if node.uses:
+            links = ' '.join(self._element_link(uid, page, with_title=False) for uid in node.uses)
+            chips.append(f'<span class="el-field">uses {links}</span>')
+
+        if node.notation:
+            chain = resolve_notation_chain(self.elements_registry, node_id)
+            links = ' → '.join(self._element_link(cid, page, with_title=False) for cid in chain)
+            chips.append(f'<span class="el-field">notation {links}</span>')
+
+        # published_at: cite via the citation pipeline ([@key] -> linked citetag)
+        if node.published_at:
+            cites = ' '.join(f'[@{key}]' for key in node.published_at)
+            chips.append(f'<span class="el-field">published {cites}</span>')
+
         lines = []
         lines.append('')
-        lines.append('<div class="elements-metadata" markdown="1">')
-        lines.append('')
-
-        # Status warning for superseded
+        # Superseded warning stays a prominent blockquote above the chip row
         if node.status == 'superseded' and node.superseded_by:
             link = self._element_link(node.superseded_by, page)
             lines.append(f'> **Superseded** by {link}')
             lines.append('')
-
-        # Kind and status
-        lines.append(f'**Kind:** {node.kind} | **Status:** {node.status}')
-        lines.append('')
-
-        # Checked
-        if node.checked:
-            flags = ', '.join(node.checked)
-            lines.append(f'**Checked:** {flags}')
-            lines.append('')
-
-        # Uses
-        if node.uses:
-            uses_links = [self._element_link(uid, page) for uid in node.uses]
-            lines.append(f'**Uses:** {", ".join(uses_links)}')
-            lines.append('')
-
-        # Notation context
-        if node.notation:
-            chain = resolve_notation_chain(self.elements_registry, node_id)
-            chain_links = [self._element_link(cid, page) for cid in chain]
-            lines.append(f'**Notation:** {" → ".join(chain_links)}')
-            lines.append('')
-
-        # Published at
-        if node.published_at:
-            lines.append(f'**Published at:** {", ".join(node.published_at)}')
-            lines.append('')
-
+        lines.append('<div class="elements-metadata" markdown="1">')
+        lines.append(' '.join(chips))
         lines.append('</div>')
         lines.append('')
         return '\n'.join(lines)

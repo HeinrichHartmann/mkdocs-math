@@ -26,11 +26,6 @@
 
       {# Article header with author, date, place, publication info #}
       <header class="article-header">
-        {% if page.meta.target %}
-        <div class="article-target-row">
-          <span class="article-target article-target-{{ page.meta.target }}">{{ page.meta.target }}</span>
-        </div>
-        {% endif %}
         <div class="article-byline">
           {{ page.meta.author }}
           {% if page.meta.date %}

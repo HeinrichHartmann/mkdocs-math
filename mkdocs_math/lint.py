@@ -194,10 +194,167 @@ def lint_file(path: Path, bib_keys: Optional[set[str]] = None) -> LintResult:
     return result
 
 
+# ── Elements lint ──────────────────────────────────────────────────────
+
+from .elements import (
+    ID_PATTERN, VALID_KINDS, VALID_STATUSES, VALID_CHECKED,
+    NOTATION_KINDS, build_registry, detect_extends_cycle,
+    parse_node_frontmatter,
+)
+
+# Known schema fields for Elements nodes
+_KNOWN_FIELDS = frozenset([
+    'id', 'title', 'kind', 'status', 'uses', 'notation', 'extends',
+    'checked', 'published_at', 'source', 'superseded_by', 'outline_enabled',
+    'outline_depth', 'hide', 'math', 'type', 'preamble',
+])
+
+
+def is_elements_node(path: Path, elements_dir: Optional[Path]) -> bool:
+    """Check if a file is under the elements directory and has an id: field."""
+    if elements_dir is None:
+        return False
+    try:
+        path.resolve().relative_to(elements_dir.resolve())
+    except ValueError:
+        return False
+    meta = parse_node_frontmatter(path)
+    return meta is not None and 'id' in meta
+
+
+def lint_elements_node(path: Path, registry: dict, bib_keys: Optional[set[str]] = None) -> LintResult:
+    """Lint an Elements node against the E-* checks from the ADR."""
+    result = LintResult(path)
+    meta = parse_node_frontmatter(path)
+    if meta is None:
+        return result
+
+    node_id = meta.get('id', '')
+
+    # E-ID-FORMAT: id matches ^E[0-9]{4}$
+    if not ID_PATTERN.match(str(node_id)):
+        result.warn(1, 'E-ID-FORMAT', f'id "{node_id}" does not match ^E[0-9]{{4}}$')
+
+    # E-ID-UNIQUE: checked at registry level (duplicate = build error)
+    # We detect it here by counting occurrences
+    id_count = sum(1 for nid, n in registry.items() if nid == node_id)
+    # Registry enforces uniqueness at build time; we still flag for clarity
+    if id_count == 0 and ID_PATTERN.match(str(node_id)):
+        result.warn(1, 'E-ID-UNIQUE', f'id {node_id} not found in registry (duplicate or conflict)')
+
+    # E-ID-FILENAME: filename starts with "<id> - "
+    expected_prefix = f"{node_id} - "
+    if not path.name.startswith(expected_prefix):
+        result.warn(1, 'E-ID-FILENAME', f'filename should start with "{expected_prefix}"')
+
+    # E-SCHEMA: required fields, enum validation
+    for field in ('id', 'title', 'kind', 'status'):
+        if not meta.get(field):
+            result.warn(1, 'E-SCHEMA', f'missing required field: {field}')
+
+    kind = meta.get('kind', '')
+    if kind and kind not in VALID_KINDS:
+        result.warn(1, 'E-SCHEMA', f'invalid kind: "{kind}" (allowed: {", ".join(sorted(VALID_KINDS))})')
+
+    status = meta.get('status', '')
+    if status and status not in VALID_STATUSES:
+        result.warn(1, 'E-SCHEMA', f'invalid status: "{status}" (allowed: {", ".join(sorted(VALID_STATUSES))})')
+
+    checked = meta.get('checked') or []
+    if isinstance(checked, list):
+        for c in checked:
+            if c not in VALID_CHECKED:
+                result.warn(1, 'E-SCHEMA', f'invalid checked value: "{c}" (allowed: {", ".join(sorted(VALID_CHECKED))})')
+
+    # Unknown fields warning
+    for key in meta:
+        if key not in _KNOWN_FIELDS:
+            result.warn(1, 'E-SCHEMA', f'unknown frontmatter field: "{key}" (may be fine if schema evolves)')
+
+    # E-REF-RESOLVE: uses, notation, extends, superseded_by must exist in registry
+    uses = meta.get('uses') or []
+    if isinstance(uses, list):
+        for uid in uses:
+            if str(uid) not in registry:
+                result.warn(1, 'E-REF-RESOLVE', f'uses: {uid} not found in registry')
+
+    notation = meta.get('notation')
+    if notation and str(notation) not in registry:
+        result.warn(1, 'E-REF-RESOLVE', f'notation: {notation} not found in registry')
+
+    extends = meta.get('extends')
+    if extends and str(extends) not in registry:
+        result.warn(1, 'E-REF-RESOLVE', f'extends: {extends} not found in registry')
+
+    superseded_by = meta.get('superseded_by')
+    if superseded_by and str(superseded_by) not in registry:
+        result.warn(1, 'E-REF-RESOLVE', f'superseded_by: {superseded_by} not found in registry')
+
+    # E-REF-KIND: notation target must be notation/environment; extends only on notation/environment
+    if notation and str(notation) in registry:
+        target = registry[str(notation)]
+        if target.kind not in NOTATION_KINDS:
+            result.warn(1, 'E-REF-KIND',
+                        f'notation: {notation} targets kind "{target.kind}" '
+                        f'(must be notation or environment)')
+
+    if extends:
+        if kind not in NOTATION_KINDS:
+            result.warn(1, 'E-REF-KIND',
+                        f'extends: only allowed on notation/environment nodes (this is {kind})')
+        if str(extends) in registry:
+            target = registry[str(extends)]
+            if target.kind not in NOTATION_KINDS:
+                result.warn(1, 'E-REF-KIND',
+                            f'extends: {extends} targets kind "{target.kind}" '
+                            f'(must be notation or environment)')
+
+    # E-SUPERSEDED: status: superseded iff superseded_by is set
+    if status == 'superseded' and not superseded_by:
+        result.warn(1, 'E-SUPERSEDED', 'status is "superseded" but superseded_by is not set')
+    if superseded_by and status != 'superseded':
+        result.warn(1, 'E-SUPERSEDED', f'superseded_by is set but status is "{status}" (should be "superseded")')
+
+    # E-CITE-RESOLVE: published_at citekeys must exist in bib
+    if bib_keys is not None:
+        published_at = meta.get('published_at') or []
+        if isinstance(published_at, list):
+            for key in published_at:
+                if str(key) not in bib_keys:
+                    result.warn(1, 'E-CITE-RESOLVE', f'published_at citekey not in bib: {key}')
+
+    # E-PROSE-REF: E-IDs in body that don't resolve
+    content = path.read_text(encoding='utf-8')
+    _, body, body_start = parse_frontmatter(content)
+    for i, line in enumerate(body.split('\n')):
+        for m in re.finditer(r'\bE[0-9]{4}\b', line):
+            eid = m.group(0)
+            if eid != node_id and eid not in registry:
+                result.warn(body_start + i + 1, 'E-PROSE-REF',
+                            f'E-ID {eid} in prose does not resolve in registry')
+
+    return result
+
+
+def lint_elements_global(registry: dict) -> list[tuple[str, str, str]]:
+    """Run global (cross-file) element checks. Returns list of (code, id, message)."""
+    issues = []
+
+    # E-REF-ACYCLIC: check extends cycles
+    cycle = detect_extends_cycle(registry)
+    if cycle:
+        issues.append(('E-REF-ACYCLIC', cycle[0],
+                       f'extends: cycle detected: {" → ".join(cycle)}'))
+
+    return issues
+
+
 @click.command('lint')
 @click.argument('files', nargs=-1, type=click.Path(exists=True, path_type=Path))
 @click.option('--bib', type=click.Path(exists=True, path_type=Path), help='Bibliography file for citation checking')
-def lint_cmd(files: tuple[Path], bib: Optional[Path]):
+@click.option('--elements-dir', type=click.Path(exists=True, path_type=Path),
+              help='Elements directory for node linting (auto-detected if not set)')
+def lint_cmd(files: tuple[Path], bib: Optional[Path], elements_dir: Optional[Path]):
     """Lint markdown article files for common issues."""
     if not files:
         click.echo("Usage: python -m mkdocs_math lint [--bib refs.bib] FILE [FILE ...]")
@@ -205,15 +362,58 @@ def lint_cmd(files: tuple[Path], bib: Optional[Path]):
 
     bib_keys = load_bib_keys(bib) if bib else None
 
+    # Auto-detect elements_dir if not explicitly provided
+    if elements_dir is None:
+        for f in files:
+            # Walk up to find docs/Elements pattern
+            for parent in f.resolve().parents:
+                candidate = parent / 'Elements'
+                if candidate.is_dir():
+                    elements_dir = candidate
+                    break
+                # Also check if we're inside an Elements dir
+                if parent.name == 'Elements':
+                    elements_dir = parent
+                    break
+            if elements_dir:
+                break
+
+    # Build elements registry if we have an elements dir
+    elements_registry = {}
+    if elements_dir and elements_dir.exists():
+        # Determine docs_dir (parent of elements_dir)
+        docs_dir = elements_dir.parent
+        try:
+            elements_registry = build_registry(elements_dir, docs_dir)
+        except RuntimeError as e:
+            click.echo(f"FATAL: {e}", err=True)
+            sys.exit(2)
+
     total_warnings = 0
     for path in files:
         if not path.suffix == '.md':
             continue
+
+        # Run standard article lint
         result = lint_file(path, bib_keys)
+
+        # Run elements lint if this is a node
+        if elements_dir and is_elements_node(path, elements_dir):
+            elem_result = lint_elements_node(path, elements_registry, bib_keys)
+            # Merge warnings
+            result.warnings.extend(elem_result.warnings)
+
         if not result.ok:
             for line, code, msg in result.warnings:
                 click.echo(f"{path.name}:{line}: [{code}] {msg}")
             total_warnings += len(result.warnings)
+
+    # Global element checks
+    if elements_registry:
+        global_issues = lint_elements_global(elements_registry)
+        for code, eid, msg in global_issues:
+            click.echo(f"[{code}] {msg}")
+            total_warnings += 1
 
     if total_warnings:
         click.echo(f"\n{total_warnings} warning(s) in {len(files)} file(s)")

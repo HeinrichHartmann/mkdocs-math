@@ -20,6 +20,12 @@ from .citations.utils import (
     tempfile_from_url,
     get_path_relative_to_mkdocs_yaml,
 )
+from .elements import (
+    build_registry as build_elements_registry,
+    registry_to_json,
+    compute_backlinks,
+    resolve_notation_chain,
+)
 
 log = logging.getLogger("mkdocs.plugins.math")
 
@@ -379,6 +385,7 @@ class Plugin(BasePlugin):
         ("bib_command", config_options.Type(str, default="\\bibliography")),
         ("bib_by_default", config_options.Type(bool, default=True)),
         ("footnote_format", config_options.Type(str, default="{key}")),
+        ("elements_dir", config_options.Type(str, default="Elements")),
     )
 
     def __init__(self):
@@ -392,6 +399,10 @@ class Plugin(BasePlugin):
         # Anchor registry: {anchor_id: {title, type, theme_id, number, env_name}}
         self.anchor_registry = {}
         self.anchor_cache_file = Path(".cache") / "anchor_registry.json"
+        # Elements registry: id -> ElementNode
+        self.elements_registry = {}
+        self.elements_backlinks = {}
+        self.elements_dir_path = None
 
     def on_startup(self, *, command, dirty):
         """Having on_startup() tells mkdocs to keep the plugin object upon rebuilds."""
@@ -443,12 +454,32 @@ class Plugin(BasePlugin):
 
         return config
 
+    def on_files(self, files, config):
+        """Build elements registry from the elements directory."""
+        elements_dir_name = self.config.get('elements_dir', 'Elements')
+        docs_dir = Path(config['docs_dir'])
+        elements_dir = docs_dir / elements_dir_name
+
+        if not elements_dir.exists():
+            log.debug(f"Elements directory not found: {elements_dir}")
+            return files
+
+        self.elements_dir_path = elements_dir
+        self.elements_registry = build_elements_registry(elements_dir, docs_dir)
+        self.elements_backlinks = compute_backlinks(self.elements_registry)
+
+        log.info(f"Elements registry: {len(self.elements_registry)} nodes")
+        return files
+
     def on_post_build(self, config):
         """Called after the build process."""
         log.info("mkdocs-math build complete")
         # Save caches after build completes
         self._save_citation_index()
         self._save_anchor_cache()
+        # Write elements/index.json if registry is non-empty
+        if self.elements_registry:
+            self._write_elements_index(config)
 
     def _generate_article_listing(self, markdown, page, files):
         """Generate arxiv-style article listing for article-index pages.
@@ -620,6 +651,24 @@ class Plugin(BasePlugin):
         # Resolve anchor references [#...] to numbered links
         markdown = self._resolve_anchor_references(markdown)
 
+        # Elements: metadata header, autolink E-IDs, backlinks
+        if self._is_elements_node(page):
+            node_id = page.meta.get('id')
+            header = self._render_elements_header(node_id, page)
+            backlinks = self._render_elements_backlinks(node_id, page)
+            # Insert header after first heading
+            lines = markdown.split('\n')
+            insert_pos = 0
+            for i, line in enumerate(lines):
+                if line.strip().startswith('# '):
+                    insert_pos = i + 1
+                    break
+            lines.insert(insert_pos, header)
+            markdown = '\n'.join(lines) + backlinks
+
+        # Autolink E-IDs in all pages (if registry is populated)
+        if self.elements_registry:
+            markdown = self._autolink_element_ids(markdown, page)
 
         return markdown
 
@@ -739,6 +788,207 @@ class Plugin(BasePlugin):
             log.info(f"Anchor registry saved: {len(self.anchor_registry)} anchors")
         except Exception as e:
             log.warning(f"Error saving anchor cache: {e}")
+
+    def _write_elements_index(self, config):
+        """Write elements/index.json to the site directory."""
+        site_dir = Path(config['site_dir'])
+        out_dir = site_dir / 'elements'
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_file = out_dir / 'index.json'
+        data = registry_to_json(self.elements_registry)
+        with open(out_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+        log.info(f"Wrote elements/index.json ({len(data)} entries)")
+
+    def _is_elements_node(self, page) -> bool:
+        """Check if a page is an Elements node."""
+        if not self.elements_dir_path:
+            return False
+        meta = getattr(page, 'meta', None)
+        if not meta or 'id' not in meta:
+            return False
+        # Check if file is under elements dir
+        abs_path = Path(page.file.abs_src_path)
+        try:
+            abs_path.relative_to(self.elements_dir_path)
+            return True
+        except ValueError:
+            return False
+
+    def _element_link(self, target_id: str, page) -> str:
+        """Build a markdown link to an element node, relative to `page`."""
+        target = self.elements_registry.get(target_id)
+        if not target:
+            return f'{target_id} (unresolved)'
+        # Compute relative path from current page dir to target src_path
+        from posixpath import relpath as posix_relpath
+        page_dir = page.file.src_path.rsplit('/', 1)[0] if '/' in page.file.src_path else ''
+        rel = posix_relpath(target.src_path, start=page_dir)
+        # Angle-bracket target handles spaces in filenames
+        return f'[{target_id} — {target.title}](<{rel}>)'
+
+    def _render_elements_header(self, node_id: str, page) -> str:
+        """Render metadata header block for an Elements node."""
+        node = self.elements_registry.get(node_id)
+        if not node:
+            return ''
+
+        lines = []
+        lines.append('')
+        lines.append('<div class="elements-metadata" markdown="1">')
+        lines.append('')
+
+        # Status warning for superseded
+        if node.status == 'superseded' and node.superseded_by:
+            link = self._element_link(node.superseded_by, page)
+            lines.append(f'> **Superseded** by {link}')
+            lines.append('')
+
+        # Kind and status
+        lines.append(f'**Kind:** {node.kind} | **Status:** {node.status}')
+        lines.append('')
+
+        # Checked
+        if node.checked:
+            flags = ', '.join(node.checked)
+            lines.append(f'**Checked:** {flags}')
+            lines.append('')
+
+        # Uses
+        if node.uses:
+            uses_links = [self._element_link(uid, page) for uid in node.uses]
+            lines.append(f'**Uses:** {", ".join(uses_links)}')
+            lines.append('')
+
+        # Notation context
+        if node.notation:
+            chain = resolve_notation_chain(self.elements_registry, node_id)
+            chain_links = [self._element_link(cid, page) for cid in chain]
+            lines.append(f'**Notation:** {" → ".join(chain_links)}')
+            lines.append('')
+
+        # Published at
+        if node.published_at:
+            lines.append(f'**Published at:** {", ".join(node.published_at)}')
+            lines.append('')
+
+        lines.append('</div>')
+        lines.append('')
+        return '\n'.join(lines)
+
+    def _render_elements_backlinks(self, node_id: str, page) -> str:
+        """Render 'Used by' backlinks section for a node."""
+        used_by = self.elements_backlinks.get(node_id, [])
+        if not used_by:
+            return ''
+
+        lines = []
+        lines.append('')
+        lines.append('---')
+        lines.append('')
+        lines.append('**Used by:**')
+        lines.append('')
+        for uid in sorted(used_by):
+            lines.append(f'- {self._element_link(uid, page)}')
+        lines.append('')
+        return '\n'.join(lines)
+
+    def _autolink_element_ids(self, markdown: str, page) -> str:
+        """Replace E-ID references in prose with links. Skip code/math/headings."""
+        if not self.elements_registry:
+            return markdown
+
+        # Determine own node ID (don't self-link)
+        own_id = None
+        if self._is_elements_node(page):
+            own_id = getattr(page, 'meta', {}).get('id')
+
+        from posixpath import relpath as posix_relpath
+        page_dir = page.file.src_path.rsplit('/', 1)[0] if '/' in page.file.src_path else ''
+
+        def make_link(eid):
+            target = self.elements_registry.get(eid)
+            if not target:
+                return None
+            rel = posix_relpath(target.src_path, start=page_dir)
+            return f'[{eid}](<{rel}>)'
+
+        lines = markdown.split('\n')
+        result = []
+        in_code_block = False
+        in_math_block = False
+
+        for line in lines:
+            # Track fenced code blocks
+            if line.strip().startswith('```'):
+                in_code_block = not in_code_block
+            if line.strip() == '$$':
+                in_math_block = not in_math_block
+
+            if in_code_block or in_math_block:
+                result.append(line)
+                continue
+
+            # Skip heading lines (don't linkify H1 title etc.)
+            if line.lstrip().startswith('#'):
+                result.append(line)
+                continue
+
+            # First pass: replace bracketed bare-ID references [E0004]
+            # These are the prose convention in real nodes.
+            # Only match [E0004] NOT followed by ( or [ (which would be a link already)
+            def replace_bracketed(m):
+                eid = m.group(1)
+                if eid == own_id:
+                    return m.group(0)
+                link = make_link(eid)
+                return link if link else m.group(0)
+
+            line = re.sub(r'\[(E[0-9]{4})\](?!\(|\[)', replace_bracketed, line)
+
+            # Second pass: replace bare E-IDs not already inside links or code spans
+            def replace_eid(m):
+                eid = m.group(0)
+                if eid == own_id:
+                    return eid
+                start = m.start()
+                before = line[:start]
+                # Skip if inside link target ](...)
+                if before.endswith('(') or before.endswith('/'):
+                    return eid
+                # Skip if inside code span
+                if before.count('`') % 2 == 1:
+                    return eid
+                # Skip if inside inline math
+                if before.count('$') % 2 == 1:
+                    return eid
+                # Skip if preceded by [ (already part of a link text or bracketed ref)
+                if start > 0 and line[start-1] == '[':
+                    return eid
+                # Skip if followed by ] (part of link text)
+                end = m.end()
+                if end < len(line) and line[end] == ']':
+                    return eid
+                # Skip if inside balanced brackets (part of existing link)
+                bracket_depth = 0
+                for c in before:
+                    if c == '[':
+                        bracket_depth += 1
+                    elif c == ']':
+                        bracket_depth -= 1
+                if bracket_depth > 0:
+                    return eid
+                # Skip if preceded by <( (inside an angle-bracket link target)
+                if before.endswith('<'):
+                    return eid
+
+                link = make_link(eid)
+                return link if link else eid
+
+            line = re.sub(r'\bE[0-9]{4}\b', replace_eid, line)
+            result.append(line)
+
+        return '\n'.join(result)
 
     def _register_heading_anchors(self, markdown: str, page) -> None:
         """Register heading anchors with custom IDs {#...} in the anchor registry.

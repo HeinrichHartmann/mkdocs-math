@@ -5,7 +5,9 @@ title: Base Environment
 kind: environment
 status: established
 depends_on: []
-checked: [human]
+validation:
+  human:
+    anchor: validation-human-review
 published_at: [TestKey2026]
 ---
 

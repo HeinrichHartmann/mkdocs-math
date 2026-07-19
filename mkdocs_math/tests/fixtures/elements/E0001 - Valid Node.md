@@ -5,7 +5,9 @@ title: Valid Node
 kind: definition
 status: established
 depends_on: []
-checked: [numeric]
+validation:
+  numeric:
+    file: validation/python/E0001_test.py
 published_at: []
 ---
 

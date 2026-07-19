@@ -22,6 +22,7 @@ from .citations.utils import (
 )
 from .elements import (
     build_registry as build_elements_registry,
+    build_nav_sections,
     registry_to_json,
     compute_backlinks,
     resolve_notation_chain,
@@ -647,7 +648,7 @@ class Plugin(BasePlugin):
                 # Nav label: "E0001 . Not . Title"
                 abbrev = KIND_ABBREV.get(node.kind, node.kind)
                 page.meta['title'] = f'{node.id} . {abbrev} . {node.title}'
-            header = self._render_elements_header(node_id, page, markdown)
+            header = self._render_elements_header(node_id, page)
             backlinks = self._render_elements_backlinks(node_id, page)
             # Normalize H1 from frontmatter (single display truth, plain
             # title); the chip row goes ABOVE the title.
@@ -698,8 +699,27 @@ class Plugin(BasePlugin):
         return env
 
     def on_page_context(self, context, page, config, nav):
-        """Inject outline and references data into template context for article pages."""
-        # Only process article-type pages
+        """Inject template context: Elements sidebar, article outline/references."""
+        # Elements sidebar for all pages under Elements/
+        elements_dir_name = self.config.get('elements_dir', 'Elements')
+        if page.file.src_path.startswith(elements_dir_name + '/') and self.elements_registry:
+            sections = build_nav_sections(self.elements_registry)
+            # Compute relative URLs from this page to each node
+            from posixpath import relpath
+            page_dir = page.file.src_path.rsplit('/', 1)[0]
+            for section in sections:
+                for node in section['nodes']:
+                    # src_path -> URL path (strip .md, add /)
+                    node_url = node['src_path']
+                    if node_url.endswith('.md'):
+                        node_url = node_url[:-3] + '/'
+                    node['url'] = relpath(node_url, page_dir)
+            context['elements_nav'] = {
+                'current_id': page.meta.get('id'),
+                'sections': sections,
+            }
+
+        # Article-type pages: references and outline
         if page.meta.get('type') != 'math-article':
             return context
 
@@ -853,7 +873,7 @@ class Plugin(BasePlugin):
         safe_title = target.title.replace('"', "'")
         return f'[{target_id}](<{rel}> "{safe_title}"){{.el-ref}}'
 
-    def _render_elements_header(self, node_id: str, page, markdown: str = '') -> str:
+    def _render_elements_header(self, node_id: str, page) -> str:
         """Render compact badge-style metadata header for an Elements node.
 
         Semantic information (kind, status, verification, dependency IDs)
@@ -880,35 +900,20 @@ class Plugin(BasePlugin):
         if node.status != 'established':
             chips.append(f'<span class="el-status el-status-{node.status}">{node.status}</span>')
 
-        # Pre-scan for **Validation (...).**  environments to map types → anchors.
-        # Environments are numbered sequentially; we replicate that logic here
-        # for Validation environments so badges can link to on-page anchors.
-        validation_anchors = {}
-        env_counter = 0
-        for m in re.finditer(r'\*\*([A-Za-z]+)\s*(?:\(([^)]*)\))?\.\*\*', markdown):
-            env_name = m.group(1)
-            if env_name.lower() == 'proof':
-                continue
-            env_counter += 1
-            if env_name.lower() == 'validation':
-                label = m.group(2) or ''
-                for vtype in ('ai', 'human'):
-                    if vtype in label.lower():
-                        validation_anchors[vtype] = f'#validation-{env_counter}'
-
-        # Verification chips
+        # Verification chips — derived from validation: field
         validation_url = self.config.get('validation_url', '') or self.config.get('lean_url', '')
-        for flag in node.checked:
-            vinfo = node.validation.get(flag, {})
-            vfile = vinfo.get('file', '') if isinstance(vinfo, dict) else ''
+        for vtype, vinfo in node.validation.items():
+            if not isinstance(vinfo, dict):
+                continue
+            vfile = vinfo.get('file', '')
+            anchor = vinfo.get('anchor', '')
             if vfile and validation_url:
                 href = f'{validation_url.rstrip("/")}/{vfile}'
-                chips.append(f'<a class="el-check" href="{href}" title="verified: {flag}">✓ {flag}</a>')
-            elif flag in validation_anchors:
-                href = validation_anchors[flag]
-                chips.append(f'<a class="el-check" href="{href}" title="verified: {flag}">✓ {flag}</a>')
+                chips.append(f'<a class="el-check" href="{href}" title="verified: {vtype}">✓ {vtype}</a>')
+            elif anchor:
+                chips.append(f'<a class="el-check" href="#{anchor}" title="verified: {vtype}">✓ {vtype}</a>')
             else:
-                chips.append(f'<span class="el-check" title="verified: {flag}">✓ {flag}</span>')
+                chips.append(f'<a class="el-check" title="verified: {vtype}">✓ {vtype}</a>')
 
         # depends_on: not shown in the header (gets long); covered by prose
         # references and the generated "Used by" section.

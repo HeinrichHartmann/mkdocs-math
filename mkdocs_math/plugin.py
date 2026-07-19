@@ -637,9 +637,9 @@ class Plugin(BasePlugin):
             node_id = page.meta.get('id')
             node = self.elements_registry.get(node_id)
             if node:
-                # Nav label: kind abbreviation prefix (e.g. "Thm · Title")
+                # Nav label: "E0001 . Not . Title"
                 abbrev = KIND_ABBREV.get(node.kind, node.kind)
-                page.meta['title'] = f'{abbrev} · {node.title}'
+                page.meta['title'] = f'{node.id} . {abbrev} . {node.title}'
             header = self._render_elements_header(node_id, page)
             backlinks = self._render_elements_backlinks(node_id, page)
             # Normalize H1 from frontmatter (single display truth, plain

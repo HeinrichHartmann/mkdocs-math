@@ -473,6 +473,22 @@ class Plugin(BasePlugin):
         self.elements_backlinks = compute_backlinks(self.elements_registry)
         self._files = files
 
+        # ID-based permalinks: remap node destinations to <elements_dir>/<ID>/
+        # (decoupled from file location and title; see adr/2026-07-19-plugin-site-boundary.md)
+        for node in self.elements_registry.values():
+            f = files.get_file_from_path(node.src_path)
+            if f is None:
+                log.warning(f"Elements: no file object for {node.src_path}")
+                continue
+            if config['use_directory_urls']:
+                f.dest_uri = f'{elements_dir_name}/{node.id}/index.html'
+            else:
+                f.dest_uri = f'{elements_dir_name}/{node.id}.html'
+            # Invalidate cached properties derived from dest_uri
+            f.__dict__.pop('url', None)
+            f.__dict__.pop('abs_dest_path', None)
+            node.url = f.url
+
         log.info(f"Elements registry: {len(self.elements_registry)} nodes")
         return files
 
@@ -711,15 +727,13 @@ class Plugin(BasePlugin):
             page.meta['hide'] = hide
 
             sections = build_nav_sections(self.elements_registry)
-            # Compute relative URLs using dest paths (accurate for use_directory_urls)
-            from posixpath import relpath
-            page_dest_dir = page.file.dest_path.rsplit('/', 1)[0]
+            # Relative URLs via mkdocs (correct for both use_directory_urls modes)
+            from mkdocs.utils import get_relative_url
             for section in sections:
                 for node in section['nodes']:
                     node_file = self._files.get_file_from_path(node['src_path'])
                     if node_file:
-                        node_dest_dir = node_file.dest_path.rsplit('/', 1)[0]
-                        node['url'] = relpath(node_dest_dir, page_dest_dir)
+                        node['url'] = get_relative_url(node_file.url, page.file.url)
                     else:
                         log.warning(f"[elements-nav] no file for {node['src_path']!r}")
                         node['url'] = '#'

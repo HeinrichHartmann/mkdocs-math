@@ -231,6 +231,18 @@ class TestElementsBuildIntegration:
         pages = list(build_test_project.rglob("*E0001*"))
         assert pages, "E0001 page not found in build output"
 
+    def test_id_based_permalinks(self, build_test_project):
+        """Node pages are published at Elements/<ID>/, decoupled from
+        filename and section directory."""
+        for eid in ("E0001", "E0002", "E0003"):
+            assert (build_test_project / "Elements" / eid / "index.html").exists(), \
+                f"Expected ID-based permalink Elements/{eid}/index.html"
+        # No title-based paths in the output
+        assert not list(build_test_project.rglob("*Base Environment*"))
+        # index.json carries the same URLs
+        data = json.loads((build_test_project / "elements" / "index.json").read_text())
+        assert data["E0001"]["url"] == "Elements/E0001/"
+
     def test_node_page_has_metadata(self, build_test_project):
         """Node pages get rendered metadata header with kind/status."""
         html_file = self._find_node_html(build_test_project, "E0002")

@@ -74,6 +74,8 @@ class ElementNode:
         self.published_at = meta.get('published_at') or []
         self.source = meta.get('source') or []
         self.superseded_by = meta.get('superseded_by')
+        # Site URL (ID-based permalink), set by the plugin in on_files
+        self.url = None
 
 
 def parse_node_frontmatter(path: Path) -> dict | None:
@@ -126,10 +128,13 @@ def registry_to_json(registry: dict[str, ElementNode]) -> dict:
     """Convert registry to JSON-serializable dict for elements/index.json."""
     result = {}
     for eid, node in sorted(registry.items()):
-        # URL: convert src_path to site URL (strip .md, add /)
-        url = node.src_path.replace('\\', '/')
-        if url.endswith('.md'):
-            url = url[:-3] + '/'
+        # URL: ID-based permalink set at build time; fallback for
+        # registry use outside a build (e.g. lint)
+        url = node.url
+        if url is None:
+            url = node.src_path.replace('\\', '/')
+            if url.endswith('.md'):
+                url = url[:-3] + '/'
         result[eid] = {
             'url': url,
             'title': node.title,

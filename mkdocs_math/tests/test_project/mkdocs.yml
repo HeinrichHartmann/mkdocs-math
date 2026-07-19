@@ -23,6 +23,7 @@ plugins:
   - mkdocs-math:
       preamble_file: "preamble.tex"
       bib_file: "meta/refs.bib"
+      elements_dir: "Elements"
 
 extra_javascript:
   # MathJax configuration MUST load before MathJax script

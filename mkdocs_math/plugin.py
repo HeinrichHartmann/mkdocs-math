@@ -387,7 +387,8 @@ class Plugin(BasePlugin):
         ("bib_by_default", config_options.Type(bool, default=True)),
         ("footnote_format", config_options.Type(str, default="{key}")),
         ("elements_dir", config_options.Type(str, default="Elements")),
-        ("lean_url", config_options.Type(str, default="")),
+        ("lean_url", config_options.Type(str, default="")),  # deprecated, use validation_url
+        ("validation_url", config_options.Type(str, default="")),
     )
 
     def __init__(self):
@@ -880,10 +881,13 @@ class Plugin(BasePlugin):
             chips.append(f'<span class="el-status el-status-{node.status}">{node.status}</span>')
 
         # Verification chips
-        lean_url = self.config.get('lean_url', '')
+        validation_url = self.config.get('validation_url', '') or self.config.get('lean_url', '')
         for flag in node.checked:
-            if flag == 'lean' and lean_url:
-                chips.append(f'<a class="el-check" href="{lean_url}" title="verified: {flag}">✓ {flag}</a>')
+            vinfo = node.validation.get(flag, {})
+            vfile = vinfo.get('file', '') if isinstance(vinfo, dict) else ''
+            if vfile and validation_url:
+                href = f'{validation_url.rstrip("/")}/{vfile}'
+                chips.append(f'<a class="el-check" href="{href}" title="verified: {flag}">✓ {flag}</a>')
             else:
                 chips.append(f'<span class="el-check" title="verified: {flag}">✓ {flag}</span>')
 

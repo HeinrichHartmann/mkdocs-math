@@ -205,8 +205,8 @@ from .elements import (
 # Known schema fields for Elements nodes
 _KNOWN_FIELDS = frozenset([
     'id', 'title', 'kind', 'status', 'depends_on', 'uses', 'notation', 'extends',
-    'checked', 'published_at', 'source', 'superseded_by', 'outline_enabled',
-    'outline_depth', 'hide', 'math', 'type', 'preamble',
+    'checked', 'validation', 'published_at', 'source', 'superseded_by',
+    'outline_enabled', 'outline_depth', 'hide', 'math', 'type', 'preamble',
 ])
 
 

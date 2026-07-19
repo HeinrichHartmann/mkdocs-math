@@ -654,8 +654,8 @@ class Plugin(BasePlugin):
         # Elements: metadata header, autolink E-IDs, backlinks
         if self._is_elements_node(page):
             node_id = page.meta.get('id')
-            header = self._render_elements_header(node_id)
-            backlinks = self._render_elements_backlinks(node_id)
+            header = self._render_elements_header(node_id, page)
+            backlinks = self._render_elements_backlinks(node_id, page)
             # Insert header after first heading
             lines = markdown.split('\n')
             insert_pos = 0
@@ -668,7 +668,7 @@ class Plugin(BasePlugin):
 
         # Autolink E-IDs in all pages (if registry is populated)
         if self.elements_registry:
-            markdown = self._autolink_element_ids(markdown)
+            markdown = self._autolink_element_ids(markdown, page)
 
         return markdown
 
@@ -815,7 +815,19 @@ class Plugin(BasePlugin):
         except ValueError:
             return False
 
-    def _render_elements_header(self, node_id: str) -> str:
+    def _element_link(self, target_id: str, page) -> str:
+        """Build a markdown link to an element node, relative to `page`."""
+        target = self.elements_registry.get(target_id)
+        if not target:
+            return f'{target_id} (unresolved)'
+        # Compute relative path from current page dir to target src_path
+        from posixpath import relpath as posix_relpath
+        page_dir = page.file.src_path.rsplit('/', 1)[0] if '/' in page.file.src_path else ''
+        rel = posix_relpath(target.src_path, start=page_dir)
+        # Angle-bracket target handles spaces in filenames
+        return f'[{target_id} — {target.title}](<{rel}>)'
+
+    def _render_elements_header(self, node_id: str, page) -> str:
         """Render metadata header block for an Elements node."""
         node = self.elements_registry.get(node_id)
         if not node:
@@ -828,9 +840,8 @@ class Plugin(BasePlugin):
 
         # Status warning for superseded
         if node.status == 'superseded' and node.superseded_by:
-            target = self.elements_registry.get(node.superseded_by)
-            target_title = target.title if target else node.superseded_by
-            lines.append(f'> **Superseded** by [{node.superseded_by} — {target_title}](#{node.superseded_by})')
+            link = self._element_link(node.superseded_by, page)
+            lines.append(f'> **Superseded** by {link}')
             lines.append('')
 
         # Kind and status
@@ -845,26 +856,14 @@ class Plugin(BasePlugin):
 
         # Uses
         if node.uses:
-            uses_links = []
-            for uid in node.uses:
-                target = self.elements_registry.get(uid)
-                if target:
-                    uses_links.append(f'[{uid} — {target.title}]({uid})')
-                else:
-                    uses_links.append(f'{uid} (unresolved)')
+            uses_links = [self._element_link(uid, page) for uid in node.uses]
             lines.append(f'**Uses:** {", ".join(uses_links)}')
             lines.append('')
 
         # Notation context
         if node.notation:
             chain = resolve_notation_chain(self.elements_registry, node_id)
-            chain_links = []
-            for cid in chain:
-                target = self.elements_registry.get(cid)
-                if target:
-                    chain_links.append(f'[{cid} — {target.title}]({cid})')
-                else:
-                    chain_links.append(cid)
+            chain_links = [self._element_link(cid, page) for cid in chain]
             lines.append(f'**Notation:** {" → ".join(chain_links)}')
             lines.append('')
 
@@ -877,7 +876,7 @@ class Plugin(BasePlugin):
         lines.append('')
         return '\n'.join(lines)
 
-    def _render_elements_backlinks(self, node_id: str) -> str:
+    def _render_elements_backlinks(self, node_id: str, page) -> str:
         """Render 'Used by' backlinks section for a node."""
         used_by = self.elements_backlinks.get(node_id, [])
         if not used_by:
@@ -890,18 +889,29 @@ class Plugin(BasePlugin):
         lines.append('**Used by:**')
         lines.append('')
         for uid in sorted(used_by):
-            target = self.elements_registry.get(uid)
-            if target:
-                lines.append(f'- [{uid} — {target.title}]({uid})')
-            else:
-                lines.append(f'- {uid}')
+            lines.append(f'- {self._element_link(uid, page)}')
         lines.append('')
         return '\n'.join(lines)
 
-    def _autolink_element_ids(self, markdown: str) -> str:
-        """Replace E-ID references in prose with links. Skip code/math blocks."""
+    def _autolink_element_ids(self, markdown: str, page) -> str:
+        """Replace E-ID references in prose with links. Skip code/math/headings."""
         if not self.elements_registry:
             return markdown
+
+        # Determine own node ID (don't self-link)
+        own_id = None
+        if self._is_elements_node(page):
+            own_id = getattr(page, 'meta', {}).get('id')
+
+        from posixpath import relpath as posix_relpath
+        page_dir = page.file.src_path.rsplit('/', 1)[0] if '/' in page.file.src_path else ''
+
+        def make_link(eid):
+            target = self.elements_registry.get(eid)
+            if not target:
+                return None
+            rel = posix_relpath(target.src_path, start=page_dir)
+            return f'[{eid}](<{rel}>)'
 
         lines = markdown.split('\n')
         result = []
@@ -919,33 +929,47 @@ class Plugin(BasePlugin):
                 result.append(line)
                 continue
 
-            # Replace E-IDs not already inside links or code spans
+            # Skip heading lines (don't linkify H1 title etc.)
+            if line.lstrip().startswith('#'):
+                result.append(line)
+                continue
+
+            # First pass: replace bracketed bare-ID references [E0004]
+            # These are the prose convention in real nodes.
+            # Only match [E0004] NOT followed by ( or [ (which would be a link already)
+            def replace_bracketed(m):
+                eid = m.group(1)
+                if eid == own_id:
+                    return m.group(0)
+                link = make_link(eid)
+                return link if link else m.group(0)
+
+            line = re.sub(r'\[(E[0-9]{4})\](?!\(|\[)', replace_bracketed, line)
+
+            # Second pass: replace bare E-IDs not already inside links or code spans
             def replace_eid(m):
                 eid = m.group(0)
-                # Check if already inside a markdown link [...](...)
-                start = m.start()
-                # Look backward for ]( pattern indicating we're in a link target
-                prefix = line[:start]
-                if prefix.endswith('(') or prefix.endswith('/'):
+                if eid == own_id:
                     return eid
-                # Check if inside code span (backticks)
-                # Count backticks before this position
+                start = m.start()
                 before = line[:start]
+                # Skip if inside link target ](...)
+                if before.endswith('(') or before.endswith('/'):
+                    return eid
+                # Skip if inside code span
                 if before.count('`') % 2 == 1:
                     return eid
-                # Check if inside inline math $...$
-                # Simple heuristic: count $ before position
+                # Skip if inside inline math
                 if before.count('$') % 2 == 1:
                     return eid
-                # Don't replace if already in a link text like [E0001 — ...]
+                # Skip if preceded by [ (already part of a link text or bracketed ref)
                 if start > 0 and line[start-1] == '[':
                     return eid
-                # Don't replace if followed by ] (already a link)
+                # Skip if followed by ] (part of link text)
                 end = m.end()
                 if end < len(line) and line[end] == ']':
                     return eid
-                # Don't replace if preceded by [ and part of markdown link
-                # Look for balanced [...] around this
+                # Skip if inside balanced brackets (part of existing link)
                 bracket_depth = 0
                 for c in before:
                     if c == '[':
@@ -954,11 +978,12 @@ class Plugin(BasePlugin):
                         bracket_depth -= 1
                 if bracket_depth > 0:
                     return eid
+                # Skip if preceded by <( (inside an angle-bracket link target)
+                if before.endswith('<'):
+                    return eid
 
-                node = self.elements_registry.get(eid)
-                if node:
-                    return f'[{eid}]({eid})'
-                return eid
+                link = make_link(eid)
+                return link if link else eid
 
             line = re.sub(r'\bE[0-9]{4}\b', replace_eid, line)
             result.append(line)

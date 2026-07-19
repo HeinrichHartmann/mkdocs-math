@@ -6,7 +6,11 @@ kind: proposition
 status: established
 notation: E0001
 depends_on: [E0001]
-checked: [numeric, symbolic]
+validation:
+  numeric:
+    file: validation/python/E0002_test.py
+  symbolic:
+    file: validation/sympy/E0002_test.py
 ---
 
 # E0002 — Uses First

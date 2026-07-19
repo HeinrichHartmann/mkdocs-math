@@ -6,7 +6,9 @@ kind: theorem
 status: established
 notation: E0001
 depends_on: [E0001, E0002]
-checked: [numeric]
+validation:
+  numeric:
+    file: validation/python/E0003_test.py
 ---
 
 # E0003 — Second Result

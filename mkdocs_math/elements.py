@@ -19,7 +19,10 @@ VALID_KINDS = frozenset([
     'proposition', 'theorem', 'corollary', 'example',
 ])
 VALID_STATUSES = frozenset(['draft', 'established', 'superseded'])
-VALID_CHECKED = frozenset(['numeric', 'symbolic', 'ai', 'human', 'formal'])
+VALID_CHECKED = frozenset(['numeric', 'symbolic', 'ai', 'human', 'formal'])  # deprecated alias
+VALID_VALIDATION_TYPES = frozenset(['numeric', 'symbolic', 'ai', 'human', 'formal'])
+# Types whose evidence is an external file (vs. an on-page anchor)
+FILE_VALIDATION_TYPES = frozenset(['numeric', 'symbolic', 'formal'])
 NOTATION_KINDS = frozenset(['notation', 'environment'])
 
 # Nav-label abbreviations per kind ('environment' is a legacy alias of 'notation')
@@ -172,6 +175,36 @@ def resolve_notation_chain(registry: dict[str, ElementNode], node_id: str) -> li
             break
         current = target.extends
     return chain
+
+
+def build_nav_sections(registry: dict[str, ElementNode]) -> list[dict]:
+    """Group registry nodes by subdirectory into navigation sections.
+
+    Returns list of {name, nodes} dicts sorted by directory prefix.
+    Directory names like '100 Moebius Calculus' become 'Moebius Calculus'.
+    Each node dict has: id, title, kind, abbrev, src_path, status.
+    """
+    from collections import OrderedDict
+
+    sections: OrderedDict[str, list[dict]] = OrderedDict()
+    for node in sorted(registry.values(), key=lambda n: n.id):
+        parts = Path(node.src_path).parts
+        if len(parts) >= 3:  # Elements / section-dir / file.md
+            section_dir = parts[1]
+            section_name = re.sub(r'^\d+\s+', '', section_dir)
+        else:
+            section_name = 'Other'
+        kind = 'notation' if node.kind == 'environment' else node.kind
+        abbrev = KIND_ABBREV.get(node.kind, node.kind)
+        sections.setdefault(section_name, []).append({
+            'id': node.id,
+            'title': node.title,
+            'kind': kind,
+            'abbrev': abbrev,
+            'src_path': node.src_path,
+            'status': node.status,
+        })
+    return [{'name': name, 'nodes': nodes} for name, nodes in sections.items()]
 
 
 def compute_backlinks(registry: dict[str, ElementNode]) -> dict[str, list[str]]:

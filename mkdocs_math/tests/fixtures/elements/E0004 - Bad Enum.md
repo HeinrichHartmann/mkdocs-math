@@ -5,7 +5,9 @@ title: Bad Enum Values
 kind: fantasy
 status: banana
 depends_on: []
-checked: [quantum]
+validation:
+  quantum:
+    file: does-not-matter.py
 ---
 
 # E0004 — Bad Enum Values

@@ -198,6 +198,7 @@ def lint_file(path: Path, bib_keys: Optional[set[str]] = None) -> LintResult:
 
 from .elements import (
     ID_PATTERN, VALID_KINDS, VALID_STATUSES, VALID_CHECKED,
+    VALID_VALIDATION_TYPES, FILE_VALIDATION_TYPES,
     NOTATION_KINDS, build_registry, detect_extends_cycle,
     parse_node_frontmatter,
 )
@@ -260,11 +261,21 @@ def lint_elements_node(path: Path, registry: dict, bib_keys: Optional[set[str]] 
     if status and status not in VALID_STATUSES:
         result.warn(1, 'E-SCHEMA', f'invalid status: "{status}" (allowed: {", ".join(sorted(VALID_STATUSES))})')
 
-    checked = meta.get('checked') or []
-    if isinstance(checked, list):
-        for c in checked:
-            if c not in VALID_CHECKED:
-                result.warn(1, 'E-SCHEMA', f'invalid checked value: "{c}" (allowed: {", ".join(sorted(VALID_CHECKED))})')
+    # checked: is deprecated — badges are derived from validation:
+    if meta.get('checked'):
+        result.warn(1, 'E-SCHEMA', 'checked: is deprecated, use validation: instead')
+
+    # validation: field structure
+    validation = meta.get('validation') or {}
+    if isinstance(validation, dict):
+        for vtype, vinfo in validation.items():
+            if vtype not in VALID_VALIDATION_TYPES:
+                result.warn(1, 'E-SCHEMA', f'invalid validation type: "{vtype}" (allowed: {", ".join(sorted(VALID_VALIDATION_TYPES))})')
+            elif isinstance(vinfo, dict):
+                if vtype in FILE_VALIDATION_TYPES and not vinfo.get('file'):
+                    result.warn(1, 'E-SCHEMA', f'validation type "{vtype}" requires a file: field')
+                if vtype not in FILE_VALIDATION_TYPES and not vinfo.get('anchor'):
+                    result.warn(1, 'E-SCHEMA', f'validation type "{vtype}" requires an anchor: field')
 
     # Unknown fields warning
     for key in meta:

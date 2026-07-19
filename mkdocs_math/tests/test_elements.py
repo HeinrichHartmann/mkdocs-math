@@ -39,7 +39,7 @@ class TestRegistry:
         assert node.kind == 'definition'
         assert node.status == 'established'
         assert node.depends_on == []
-        assert node.checked == ['numeric']
+        assert node.validation == {'numeric': {'file': 'validation/python/E0001_test.py'}}
 
     def test_registry_depends_on_field(self):
         """depends_on: field is parsed correctly."""
@@ -141,12 +141,12 @@ class TestLint:
         assert 'E-ID-FORMAT' in codes
 
     def test_bad_enum_values(self):
-        """Invalid kind/status/checked trigger E-SCHEMA."""
+        """Invalid kind/status/validation type trigger E-SCHEMA."""
         registry = build_registry(FIXTURES, FIXTURES)
         path = FIXTURES / "E0004 - Bad Enum.md"
         result = lint_elements_node(path, registry)
         codes = [code for _, code, _ in result.warnings]
-        assert codes.count('E-SCHEMA') >= 3  # kind, status, checked
+        assert codes.count('E-SCHEMA') >= 3  # kind, status, validation type
 
     def test_unresolvable_depends_on(self):
         """Non-existent IDs in depends_on: trigger E-REF-RESOLVE."""

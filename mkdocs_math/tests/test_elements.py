@@ -38,15 +38,22 @@ class TestRegistry:
         assert node.title == 'Valid Node'
         assert node.kind == 'definition'
         assert node.status == 'established'
-        assert node.uses == []
+        assert node.depends_on == []
         assert node.checked == ['numeric']
 
-    def test_registry_uses_field(self):
-        """uses: field is parsed correctly."""
+    def test_registry_depends_on_field(self):
+        """depends_on: field is parsed correctly."""
         registry = build_registry(FIXTURES, FIXTURES)
         node = registry['E0002']
-        assert node.uses == ['E0001']
+        assert node.depends_on == ['E0001']
         assert node.notation == 'E0001'
+
+    def test_legacy_uses_field_accepted(self, tmp_path):
+        """Old 'uses:' field is accepted as fallback for depends_on:."""
+        node_file = tmp_path / "E0099 - Legacy.md"
+        node_file.write_text("---\nid: E0099\ntitle: Legacy\nkind: lemma\nstatus: established\nuses: [E0001]\n---\n# E0099\n")
+        registry = build_registry(tmp_path, tmp_path)
+        assert registry['E0099'].depends_on == ['E0001']
 
     def test_duplicate_id_raises(self):
         """Duplicate IDs raise RuntimeError."""
@@ -141,14 +148,14 @@ class TestLint:
         codes = [code for _, code, _ in result.warnings]
         assert codes.count('E-SCHEMA') >= 3  # kind, status, checked
 
-    def test_unresolvable_uses(self):
-        """Non-existent IDs in uses: trigger E-REF-RESOLVE."""
+    def test_unresolvable_depends_on(self):
+        """Non-existent IDs in depends_on: trigger E-REF-RESOLVE."""
         registry = build_registry(FIXTURES, FIXTURES)
         path = FIXTURES / "E0005 - Unresolvable Uses.md"
         result = lint_elements_node(path, registry)
         codes = [code for _, code, _ in result.warnings]
         assert 'E-REF-RESOLVE' in codes
-        # E9999, E8888 in uses, E7777 in notation = 3 unresolvable refs
+        # E9999, E8888 in depends_on, E7777 in notation = 3 unresolvable refs
         assert codes.count('E-REF-RESOLVE') == 3
 
     def test_superseded_consistency(self):
@@ -217,7 +224,7 @@ class TestElementsBuildIntegration:
         assert "E0003" in data
         assert data["E0001"]["title"] == "Base Environment"
         assert data["E0001"]["kind"] == "environment"
-        assert data["E0002"]["uses"] == ["E0001"]
+        assert data["E0002"]["depends_on"] == ["E0001"]
 
     def test_node_page_exists(self, build_test_project):
         """Element node pages are built."""

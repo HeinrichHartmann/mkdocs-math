@@ -4,7 +4,7 @@ id: E0006
 title: Superseded Inconsistent
 kind: theorem
 status: superseded
-uses: []
+depends_on: []
 ---
 
 # E0006 — Superseded Inconsistent

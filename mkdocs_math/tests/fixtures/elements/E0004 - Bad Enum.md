@@ -4,7 +4,7 @@ id: E0004
 title: Bad Enum Values
 kind: fantasy
 status: banana
-uses: []
+depends_on: []
 checked: [quantum]
 ---
 

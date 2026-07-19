@@ -5,7 +5,7 @@ title: Notation Node
 kind: notation
 status: established
 extends: E0001
-uses: []
+depends_on: []
 ---
 
 # E0003 — Notation Node

@@ -877,7 +877,7 @@ class Plugin(BasePlugin):
         for flag in node.checked:
             chips.append(f'<span class="el-check" title="verified: {flag}">✓ {flag}</span>')
 
-        # uses: not shown in the header (gets long); covered by prose
+        # depends_on: not shown in the header (gets long); covered by prose
         # references and the generated "Used by" section.
 
         if node.notation:

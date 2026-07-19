@@ -204,7 +204,7 @@ from .elements import (
 
 # Known schema fields for Elements nodes
 _KNOWN_FIELDS = frozenset([
-    'id', 'title', 'kind', 'status', 'uses', 'notation', 'extends',
+    'id', 'title', 'kind', 'status', 'depends_on', 'uses', 'notation', 'extends',
     'checked', 'published_at', 'source', 'superseded_by', 'outline_enabled',
     'outline_depth', 'hide', 'math', 'type', 'preamble',
 ])
@@ -271,12 +271,12 @@ def lint_elements_node(path: Path, registry: dict, bib_keys: Optional[set[str]] 
         if key not in _KNOWN_FIELDS:
             result.warn(1, 'E-SCHEMA', f'unknown frontmatter field: "{key}" (may be fine if schema evolves)')
 
-    # E-REF-RESOLVE: uses, notation, extends, superseded_by must exist in registry
-    uses = meta.get('uses') or []
-    if isinstance(uses, list):
-        for uid in uses:
+    # E-REF-RESOLVE: depends_on, notation, extends, superseded_by must exist in registry
+    depends_on = meta.get('depends_on') or meta.get('uses') or []
+    if isinstance(depends_on, list):
+        for uid in depends_on:
             if str(uid) not in registry:
-                result.warn(1, 'E-REF-RESOLVE', f'uses: {uid} not found in registry')
+                result.warn(1, 'E-REF-RESOLVE', f'depends_on: {uid} not found in registry')
 
     notation = meta.get('notation')
     if notation and str(notation) not in registry:

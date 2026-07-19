@@ -5,7 +5,7 @@ title: Second Result
 kind: theorem
 status: established
 notation: E0001
-uses: [E0001, E0002]
+depends_on: [E0001, E0002]
 checked: [numeric]
 ---
 

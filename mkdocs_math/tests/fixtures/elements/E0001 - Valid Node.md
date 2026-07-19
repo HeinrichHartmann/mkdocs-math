@@ -4,7 +4,7 @@ id: E0001
 title: Valid Node
 kind: definition
 status: established
-uses: []
+depends_on: []
 checked: [numeric]
 published_at: []
 ---

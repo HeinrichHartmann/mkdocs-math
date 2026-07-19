@@ -22,6 +22,18 @@ VALID_STATUSES = frozenset(['draft', 'established', 'superseded'])
 VALID_CHECKED = frozenset(['numeric', 'adversarial', 'lean'])
 NOTATION_KINDS = frozenset(['notation', 'environment'])
 
+# Nav-label abbreviations per kind
+KIND_ABBREV = {
+    'environment': 'Env',
+    'notation': 'Not',
+    'definition': 'Def',
+    'lemma': 'Lem',
+    'proposition': 'Prop',
+    'theorem': 'Thm',
+    'corollary': 'Cor',
+    'example': 'Ex',
+}
+
 
 class ElementNode:
     """A single Elements node parsed from frontmatter."""

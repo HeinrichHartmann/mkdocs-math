@@ -6,7 +6,7 @@ kind: environment
 status: established
 uses: []
 checked: [adversarial]
-expositions: [TestKey2026]
+published_at: [TestKey2026]
 ---
 
 # E0001 — Base Environment

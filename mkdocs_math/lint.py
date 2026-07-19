@@ -205,7 +205,7 @@ from .elements import (
 # Known schema fields for Elements nodes
 _KNOWN_FIELDS = frozenset([
     'id', 'title', 'kind', 'status', 'uses', 'notation', 'extends',
-    'checked', 'expositions', 'source', 'superseded_by', 'outline_enabled',
+    'checked', 'published_at', 'source', 'superseded_by', 'outline_enabled',
     'outline_depth', 'hide', 'math', 'type', 'preamble',
 ])
 
@@ -315,13 +315,13 @@ def lint_elements_node(path: Path, registry: dict, bib_keys: Optional[set[str]] 
     if superseded_by and status != 'superseded':
         result.warn(1, 'E-SUPERSEDED', f'superseded_by is set but status is "{status}" (should be "superseded")')
 
-    # E-CITE-RESOLVE: expositions citekeys must exist in bib
+    # E-CITE-RESOLVE: published_at citekeys must exist in bib
     if bib_keys is not None:
-        expositions = meta.get('expositions') or []
-        if isinstance(expositions, list):
-            for key in expositions:
+        published_at = meta.get('published_at') or []
+        if isinstance(published_at, list):
+            for key in published_at:
                 if str(key) not in bib_keys:
-                    result.warn(1, 'E-CITE-RESOLVE', f'exposition citekey not in bib: {key}')
+                    result.warn(1, 'E-CITE-RESOLVE', f'published_at citekey not in bib: {key}')
 
     # E-PROSE-REF: E-IDs in body that don't resolve
     content = path.read_text(encoding='utf-8')

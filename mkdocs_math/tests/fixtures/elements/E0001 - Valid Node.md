@@ -6,7 +6,7 @@ kind: definition
 status: established
 uses: []
 checked: [numeric]
-expositions: []
+published_at: []
 ---
 
 # E0001 — Valid Node

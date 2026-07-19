@@ -867,9 +867,9 @@ class Plugin(BasePlugin):
             lines.append(f'**Notation:** {" → ".join(chain_links)}')
             lines.append('')
 
-        # Expositions
-        if node.expositions:
-            lines.append(f'**Expositions:** {", ".join(node.expositions)}')
+        # Published at
+        if node.published_at:
+            lines.append(f'**Published at:** {", ".join(node.published_at)}')
             lines.append('')
 
         lines.append('</div>')

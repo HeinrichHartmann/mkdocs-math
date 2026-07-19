@@ -7,7 +7,7 @@ status: established
 notation: E0001
 uses: [E0001]
 checked: [numeric, adversarial]
-expositions: [TestKey2026]
+published_at: [TestKey2026]
 ---
 
 # E0002 — First Result

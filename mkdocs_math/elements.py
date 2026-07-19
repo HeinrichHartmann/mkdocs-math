@@ -38,7 +38,7 @@ class ElementNode:
         self.notation = meta.get('notation')
         self.extends = meta.get('extends')
         self.checked = meta.get('checked') or []
-        self.expositions = meta.get('expositions') or []
+        self.published_at = meta.get('published_at') or []
         self.source = meta.get('source') or []
         self.superseded_by = meta.get('superseded_by')
 

@@ -5,7 +5,7 @@ title: First Result
 kind: proposition
 status: established
 notation: E0001
-uses: [E0001]
+depends_on: [E0001]
 checked: [numeric, adversarial]
 published_at: [TestKey2026]
 ---

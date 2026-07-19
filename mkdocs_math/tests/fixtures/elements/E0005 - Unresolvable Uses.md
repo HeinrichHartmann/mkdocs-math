@@ -4,7 +4,7 @@ id: E0005
 title: Unresolvable Uses
 kind: lemma
 status: established
-uses: [E9999, E8888]
+depends_on: [E9999, E8888]
 notation: E7777
 ---
 

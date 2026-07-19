@@ -62,7 +62,8 @@ class ElementNode:
         # environment marker in the body (**Theorem.** -> theorem)
         self.kind = meta.get('kind') or infer_kind_from_body(path) or ''
         self.status = meta.get('status', '')
-        self.uses = meta.get('uses') or []
+        # depends_on: (formerly uses:) — accept both during transition
+        self.depends_on = meta.get('depends_on') or meta.get('uses') or []
         self.notation = meta.get('notation')
         self.extends = meta.get('extends')
         self.checked = meta.get('checked') or []
@@ -130,7 +131,7 @@ def registry_to_json(registry: dict[str, ElementNode]) -> dict:
             'title': node.title,
             'kind': node.kind,
             'status': node.status,
-            'uses': node.uses,
+            'depends_on': node.depends_on,
         }
     return result
 
@@ -173,11 +174,11 @@ def resolve_notation_chain(registry: dict[str, ElementNode], node_id: str) -> li
 
 
 def compute_backlinks(registry: dict[str, ElementNode]) -> dict[str, list[str]]:
-    """Compute 'used by' backlinks: target_id -> [source_ids that use it]."""
+    """Compute 'depended on by' backlinks: target_id -> [source_ids that depend on it]."""
     backlinks = {}
     for eid, node in registry.items():
-        for used_id in node.uses:
-            backlinks.setdefault(used_id, []).append(eid)
+        for dep_id in node.depends_on:
+            backlinks.setdefault(dep_id, []).append(eid)
         if node.notation:
             backlinks.setdefault(node.notation, []).append(eid)
     return backlinks

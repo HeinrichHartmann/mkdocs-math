@@ -637,9 +637,9 @@ class Plugin(BasePlugin):
             node_id = page.meta.get('id')
             node = self.elements_registry.get(node_id)
             if node:
-                # Nav label: kind abbreviation prefix (e.g. "Thm · Title")
+                # Nav label: "E0001 . Not . Title"
                 abbrev = KIND_ABBREV.get(node.kind, node.kind)
-                page.meta['title'] = f'{abbrev} · {node.title}'
+                page.meta['title'] = f'{node.id} . {abbrev} . {node.title}'
             header = self._render_elements_header(node_id, page)
             backlinks = self._render_elements_backlinks(node_id, page)
             # Normalize H1 from frontmatter (single display truth, plain
@@ -877,7 +877,7 @@ class Plugin(BasePlugin):
         for flag in node.checked:
             chips.append(f'<span class="el-check" title="verified: {flag}">✓ {flag}</span>')
 
-        # uses: not shown in the header (gets long); covered by prose
+        # depends_on: not shown in the header (gets long); covered by prose
         # references and the generated "Used by" section.
 
         if node.notation:

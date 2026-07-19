@@ -4,7 +4,7 @@ id: X9999
 title: Bad ID format
 kind: theorem
 status: established
-uses: []
+depends_on: []
 ---
 
 # X9999 — Bad ID

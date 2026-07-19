@@ -4,7 +4,7 @@ id: E0001
 title: Base Environment
 kind: environment
 status: established
-uses: []
+depends_on: []
 checked: [adversarial]
 published_at: [TestKey2026]
 ---

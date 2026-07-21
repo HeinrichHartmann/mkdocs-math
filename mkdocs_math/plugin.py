@@ -599,7 +599,7 @@ class Plugin(BasePlugin):
                 'abstract': meta.get('abstract', '').strip(),
                 'author': meta.get('author', ''),
                 'url': meta.get('link') or rel_url,
-                'tagline': meta.get('tagline', ''),
+                'description': meta.get('description', '') or meta.get('tagline', ''),
                 'publications': meta.get('publications', {}),
                 'status': meta.get('status', '900 Uncategorized'),
                 'target': meta.get('target', ''),
@@ -644,8 +644,8 @@ class Plugin(BasePlugin):
                 for name, url in (art.get('publications') or {}).items():
                     parts.append(f'[{name}]({url})')
                 line = ' · '.join(parts)
-                if art.get('tagline'):
-                    line += '<br>\n  *' + art['tagline'] + '*'
+                if art.get('description'):
+                    line += '<br>\n  *' + art['description'] + '*'
                 lines.append(f'- {line}')
             lines.append('')
 
@@ -667,8 +667,8 @@ class Plugin(BasePlugin):
             for name, url in (art.get('publications') or {}).items():
                 parts.append(f'[{name}]({url})')
             line = ' · '.join(parts)
-            if art.get('tagline'):
-                line += '<br>\n  *' + art['tagline'] + '*'
+            if art.get('description'):
+                line += '<br>\n  *' + art['description'] + '*'
             flat_lines.append(f'- {line}')
             flat_lines.append('')
         flat_listing = '\n'.join(flat_lines)

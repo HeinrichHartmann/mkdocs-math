@@ -55,22 +55,8 @@
         </div>
         {% endif %}
 
-      {% set file_name = page.file.src_path.split('/')[-1] %}
-      {% set pdf_name = file_name.replace('.md', '.pdf') %}
-      <div class="article-downloads">
-        <a href="{{ base_url }}/pdf/{{ pdf_name }}" class="article-download-link" title="Download PDF">
-          pdf
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
-            <path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 2l5 5h-5V4zm-3 9h2v4h2l-3 3-3-3h2v-4z"/>
-          </svg>
-        </a>
-        <a href="{{ base_url }}/{{ page.file.src_path }}" class="article-download-link" title="View Markdown source">
-            md
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
-            <path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 17v-2h8v2H6zm10-4H6v-2h10v2z"/>
-          </svg>
-        </a>
-      </div>
+      {# PDF and source downloads removed — PDFs are GitHub release artifacts,
+         source is the repo itself. Publications list GitHub links via frontmatter. #}
       </header>
 
       {# Abstract section #}

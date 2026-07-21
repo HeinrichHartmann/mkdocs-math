@@ -598,7 +598,7 @@ class Plugin(BasePlugin):
                 'doi': meta.get('doi', ''),
                 'abstract': meta.get('abstract', '').strip(),
                 'author': meta.get('author', ''),
-                'url': rel_url,
+                'url': meta.get('link') or rel_url,
                 'tagline': meta.get('tagline', ''),
                 'publications': meta.get('publications', {}),
                 'status': meta.get('status', '900 Uncategorized'),

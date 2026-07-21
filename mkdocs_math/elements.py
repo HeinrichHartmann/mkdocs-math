@@ -74,6 +74,7 @@ class ElementNode:
         self.published_at = meta.get('published_at') or []
         self.source = meta.get('source') or []
         self.superseded_by = meta.get('superseded_by')
+        self.live = meta.get('live', True)
         # Site URL (ID-based permalink), set by the plugin in on_files
         self.url = None
 
@@ -191,25 +192,31 @@ def build_nav_sections(registry: dict[str, ElementNode]) -> list[dict]:
     """
     from collections import OrderedDict
 
-    sections: OrderedDict[str, list[dict]] = OrderedDict()
+    sections: OrderedDict[str, tuple[str, list[dict]]] = OrderedDict()
     for node in sorted(registry.values(), key=lambda n: n.id):
+        if not node.live:
+            continue
         parts = Path(node.src_path).parts
         if len(parts) >= 3:  # Elements / section-dir / file.md
             section_dir = parts[1]
             section_name = re.sub(r'^\d+\s+', '', section_dir)
         else:
+            section_dir = ''
             section_name = 'Other'
         kind = 'notation' if node.kind == 'environment' else node.kind
         abbrev = KIND_ABBREV.get(node.kind, node.kind)
-        sections.setdefault(section_name, []).append({
+        sections.setdefault(section_name, (section_dir, []))[1].append({
             'id': node.id,
             'title': node.title,
             'kind': kind,
             'abbrev': abbrev,
             'src_path': node.src_path,
             'status': node.status,
+            'validation': node.validation,
+            'published_at': node.published_at,
         })
-    return [{'name': name, 'nodes': nodes} for name, nodes in sections.items()]
+    return [{'name': name, 'dir': dir_name, 'nodes': nodes}
+            for name, (dir_name, nodes) in sections.items()]
 
 
 def compute_backlinks(registry: dict[str, ElementNode]) -> dict[str, list[str]]:

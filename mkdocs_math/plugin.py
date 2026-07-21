@@ -423,6 +423,19 @@ class Plugin(BasePlugin):
         if templates_dir not in config['theme'].dirs:
             config['theme'].dirs.insert(0, templates_dir)
 
+        # Inject proofs.js for collapsible proof environments
+        proofs_js_src = Path(__file__).parent / "proofs.js"
+        if proofs_js_src.exists():
+            docs_js_dir = Path(config['docs_dir']) / 'javascript'
+            docs_js_dir.mkdir(parents=True, exist_ok=True)
+            dest = docs_js_dir / 'mkdocs-math-proofs.js'
+            if not dest.exists() or dest.read_bytes() != proofs_js_src.read_bytes():
+                import shutil
+                shutil.copy2(proofs_js_src, dest)
+            js_path = 'javascript/mkdocs-math-proofs.js'
+            if js_path not in config.get('extra_javascript', []):
+                config.setdefault('extra_javascript', []).append(js_path)
+
         # Load caches from disk
         self.citation_index = self._load_citation_index()
         self.anchor_registry = self._load_anchor_cache()
@@ -489,7 +502,31 @@ class Plugin(BasePlugin):
             f.__dict__.pop('abs_dest_path', None)
             node.url = f.url
 
-        log.info(f"Elements registry: {len(self.elements_registry)} nodes")
+        # Generate virtual index pages for each Elements subdirectory
+        from mkdocs.structure.files import File as MkDocsFile
+        seen_dirs = set()
+        for node in self.elements_registry.values():
+            if not node.live:
+                continue
+            parts = Path(node.src_path).parts
+            for depth in range(0, min(len(parts), 6)):
+                dir_path = '/'.join(parts[:depth + 1])
+                if dir_path != node.src_path:
+                    seen_dirs.add(dir_path)
+
+        self._section_index_files = {}
+        for dir_path in sorted(seen_dirs):
+            src_uri = f'{dir_path}/index.md'
+            if files.get_file_from_path(src_uri):
+                continue  # don't overwrite hand-written index.md
+            section_name = re.sub(r'^\d+\s+', '', Path(dir_path).name)
+            stub = f'---\noutline_enabled: false\n---\n# {section_name}\n'
+            f = MkDocsFile.generated(config, src_uri, content=stub)
+            files.append(f)
+            self._section_index_files[src_uri] = dir_path
+
+        log.info(f"Elements registry: {len(self.elements_registry)} nodes, "
+                 f"{len(self._section_index_files)} index pages")
         return files
 
     def on_post_build(self, config):
@@ -643,6 +680,100 @@ class Plugin(BasePlugin):
             return markdown
         return markdown
 
+    @staticmethod
+    def _node_attr(node, key, default=None):
+        """Get attribute from ElementNode or dict."""
+        if isinstance(node, dict):
+            return node.get(key, default)
+        return getattr(node, key, default)
+
+    def _render_node_list_item(self, node, page=None) -> str:
+        """Render a single node as an HTML list item with styled pills."""
+        nid = self._node_attr(node, 'id', '')
+        title = self._node_attr(node, 'title', '')
+        kind = self._node_attr(node, 'kind', '')
+        if kind == 'environment':
+            kind = 'notation'
+        abbrev = KIND_ABBREV.get(kind, kind).upper()
+        validation = self._node_attr(node, 'validation', {}) or {}
+        published = self._node_attr(node, 'published_at', []) or []
+
+        # Resolve link URL from registry
+        href = ''
+        reg_node = self.elements_registry.get(nid)
+        if reg_node and reg_node.url and page:
+            from mkdocs.utils import get_relative_url
+            href = get_relative_url(reg_node.url, page.file.url)
+
+        # Right-floated pills: published + validation
+        right_pills = []
+        if published:
+            right_pills.append('<span class="el-field">published</span>')
+        for vtype in ('formal', 'numeric', 'symbolic', 'ai', 'human'):
+            if vtype in validation:
+                right_pills.append(f'<span class="el-check">✓ {vtype}</span>')
+        right_html = ' '.join(right_pills)
+
+        if href:
+            id_html = f'<a href="{href}" class="el-id">{nid}</a>'
+            title_html = f'<a href="{href}" class="el-index-title">{title}</a>'
+        else:
+            id_html = f'<span class="el-id">{nid}</span>'
+            title_html = f'<span class="el-index-title">{title}</span>'
+
+        return (
+            f'<li class="el-index-item">'
+            f'{id_html}'
+            f'<span class="el-kind el-kind-{kind}">{abbrev}</span>'
+            f'{title_html}'
+            f'<span class="el-index-right">{right_html}</span>'
+            f'</li>'
+        )
+
+    def _render_section_index(self, dir_path: str, page) -> str:
+        """Render a listing of all live nodes in a directory."""
+        from collections import OrderedDict
+
+        direct_nodes = []
+        subsections: OrderedDict[str, list] = OrderedDict()
+        prefix = dir_path + '/'
+        for node in sorted(self.elements_registry.values(), key=lambda n: n.id):
+            if not node.live or not node.src_path.startswith(prefix):
+                continue
+            rest = node.src_path[len(prefix):]
+            if '/' not in rest:
+                direct_nodes.append(node)
+            else:
+                sub_dir = rest.split('/')[0]
+                sub_name = re.sub(r'^\d+\s+', '', sub_dir)
+                subsections.setdefault(sub_name, []).append(node)
+
+        lines = ['\n']
+        if direct_nodes:
+            lines.append('<div class="elements-metadata"><ul class="el-index-list">')
+            for node in direct_nodes:
+                lines.append(self._render_node_list_item(node, page))
+            lines.append('</ul></div>\n')
+        for sub_name, nodes in subsections.items():
+            lines.append(f'## {sub_name}\n')
+            lines.append('<div class="elements-metadata"><ul class="el-index-list">')
+            for node in nodes:
+                lines.append(self._render_node_list_item(node, page))
+            lines.append('</ul></div>\n')
+        return '\n'.join(lines)
+
+    def _render_elements_overview(self, elements_dir_name: str, page) -> str:
+        """Render depth-2 overview for the top-level Elements/index.md."""
+        sections = build_nav_sections(self.elements_registry)
+        lines = ['\n']
+        for section in sections:
+            lines.append(f'## {section["name"]}\n')
+            lines.append('<div class="elements-metadata"><ul class="el-index-list">')
+            for node in section['nodes']:
+                lines.append(self._render_node_list_item(node, page))
+            lines.append('</ul></div>\n')
+        return '\n'.join(lines)
+
     def on_page_markdown(self, markdown, page, config, files):
         """Process markdown for each page."""
         # Store original markdown for outline extraction (before any modifications)
@@ -651,6 +782,17 @@ class Plugin(BasePlugin):
         # Generate article listing for index pages
         if getattr(page, 'meta', {}).get('type') == 'article-index':
             markdown = self._generate_article_listing(markdown, page, files)
+
+        # Elements section index pages: inject listing
+        if hasattr(self, '_section_index_files') and page.file.src_path in self._section_index_files:
+            dir_path = self._section_index_files[page.file.src_path]
+            markdown += self._render_section_index(dir_path, page)
+
+        # Top-level Elements/index.md: append depth-2 overview
+        elements_dir_name = self.config.get('elements_dir', 'Elements')
+        if (page.file.src_path == f'{elements_dir_name}/index.md'
+                and hasattr(self, 'elements_registry') and self.elements_registry):
+            markdown += self._render_elements_overview(elements_dir_name, page)
 
         # Register heading anchors first (before processing references)
         self._register_heading_anchors(markdown, page)
@@ -737,9 +879,19 @@ class Plugin(BasePlugin):
                     else:
                         log.warning(f"[elements-nav] no file for {node['src_path']!r}")
                         node['url'] = '#'
+                # Section index link
+                if section.get('dir'):
+                    idx_src = f"{elements_dir_name}/{section['dir']}/index.md"
+                    idx_file = self._files.get_file_from_path(idx_src)
+                    if idx_file:
+                        section['index_url'] = get_relative_url(idx_file.url, page.file.url)
+            # Top-level Elements index link
+            top_idx = self._files.get_file_from_path(f'{elements_dir_name}/index.md')
+            top_url = get_relative_url(top_idx.url, page.file.url) if top_idx else ''
             context['elements_nav'] = {
                 'current_id': page.meta.get('id'),
                 'sections': sections,
+                'index_url': top_url,
             }
 
         # Article-type pages: references and outline
@@ -1024,6 +1176,11 @@ class Plugin(BasePlugin):
 
             # Skip heading lines (don't linkify H1 title etc.)
             if line.lstrip().startswith('#'):
+                result.append(line)
+                continue
+
+            # Skip HTML lines (index listings already have <a> links)
+            if line.lstrip().startswith('<'):
                 result.append(line)
                 continue
 

@@ -390,6 +390,9 @@ class Plugin(BasePlugin):
         ("elements_dir", config_options.Type(str, default="Elements")),
         ("lean_url", config_options.Type(str, default="")),  # deprecated, use validation_url
         ("validation_url", config_options.Type(str, default="")),
+        # Show the "published" pill on node headers and index listings.
+        # Disable on sites where everything is published (e.g. math-public).
+        ("elements_published_pill", config_options.Type(bool, default=True)),
     )
 
     def __init__(self):
@@ -707,7 +710,7 @@ class Plugin(BasePlugin):
 
         # Right-floated pills: published + validation
         right_pills = []
-        if published:
+        if published and self.config.get('elements_published_pill', True):
             right_pills.append('<span class="el-field">published</span>')
         for vtype in ('formal', 'numeric', 'symbolic', 'ai', 'human'):
             if vtype in validation:
@@ -788,9 +791,12 @@ class Plugin(BasePlugin):
             dir_path = self._section_index_files[page.file.src_path]
             markdown += self._render_section_index(dir_path, page)
 
-        # Top-level Elements/index.md: append depth-2 overview
+        # Top-level Elements/index.md: append depth-2 overview.
+        # Skip generated index pages — those already got a section
+        # listing above (would duplicate every section).
         elements_dir_name = self.config.get('elements_dir', 'Elements')
         if (page.file.src_path == f'{elements_dir_name}/index.md'
+                and page.file.src_path not in getattr(self, '_section_index_files', {})
                 and hasattr(self, 'elements_registry') and self.elements_registry):
             markdown += self._render_elements_overview(elements_dir_name, page)
 
@@ -1099,7 +1105,7 @@ class Plugin(BasePlugin):
             chips.append(f'<span class="el-field">notation {links}</span>')
 
         # published_at: cite via the citation pipeline ([@key] -> linked citetag)
-        if node.published_at:
+        if node.published_at and self.config.get('elements_published_pill', True):
             cites = ' '.join(f'[@{key}]' for key in node.published_at)
             chips.append(f'<span class="el-field">published {cites}</span>')
 

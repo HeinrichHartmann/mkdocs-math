@@ -1154,7 +1154,6 @@ class Plugin(BasePlugin):
 
     def _render_lean_source(self, node, config) -> str:
         """Render collapsible Lean source block for nodes with formal validation."""
-        import html as html_mod
         if not node or not node.validation:
             return ''
         formal = node.validation.get('formal')
@@ -1167,7 +1166,16 @@ class Plugin(BasePlugin):
             source = lean_path.read_text(encoding='utf-8')
         except OSError:
             return ''
-        escaped = html_mod.escape(source)
+        try:
+            from pygments import highlight
+            from pygments.lexers import get_lexer_by_name
+            from pygments.formatters import HtmlFormatter
+            lexer = get_lexer_by_name('lean4')
+            formatter = HtmlFormatter(nowrap=False, cssclass='highlight')
+            highlighted = highlight(source, lexer, formatter)
+        except Exception:
+            import html as html_mod
+            highlighted = f'<pre><code>{html_mod.escape(source)}</code></pre>'
         validation_url = self.config.get('validation_url', '')
         href = f'{validation_url.rstrip("/")}/{formal["file"]}' if validation_url else ''
         link_html = f' (<a href="{href}">source</a>)' if href else ''
@@ -1175,7 +1183,7 @@ class Plugin(BasePlugin):
             '\n\n---\n\n'
             f'<details class="lean-source"><summary>'
             f'<strong>Lean formalization</strong>{link_html}</summary>\n'
-            f'<pre><code class="language-lean">{escaped}</code></pre>\n'
+            f'{highlighted}\n'
             f'</details>\n'
         )
 

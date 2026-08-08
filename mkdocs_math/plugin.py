@@ -815,7 +815,6 @@ class Plugin(BasePlugin):
                 page.meta['title'] = f'{node.id} . {abbrev} . {node.title}'
             header = self._render_elements_header(node_id, page)
             backlinks = self._render_elements_backlinks(node_id, page)
-            lean_block = self._render_lean_source(node, config)
             # Normalize H1 from frontmatter (single display truth, plain
             # title); the chip row goes ABOVE the title.
             lines = markdown.split('\n')
@@ -827,7 +826,7 @@ class Plugin(BasePlugin):
                     insert_pos = i
                     break
             lines.insert(insert_pos, header)
-            markdown = '\n'.join(lines) + backlinks + lean_block
+            markdown = '\n'.join(lines) + backlinks
 
         # Process citations first (before theorem environments)
         markdown = self._process_citations(markdown, page)
@@ -854,6 +853,15 @@ class Plugin(BasePlugin):
         # Autolink E-IDs in all pages (if registry is populated)
         if self.elements_registry:
             markdown = self._autolink_element_ids(markdown, page)
+
+        # Append Lean source block AFTER all markdown processing
+        # (raw HTML, immune to autolinker/citation/math transforms)
+        if self._is_elements_node(page):
+            node_id = page.meta.get('id')
+            node = self.elements_registry.get(node_id) if node_id else None
+            lean_block = self._render_lean_source(node, config)
+            if lean_block:
+                markdown += lean_block
 
         return markdown
 
@@ -1146,6 +1154,7 @@ class Plugin(BasePlugin):
 
     def _render_lean_source(self, node, config) -> str:
         """Render collapsible Lean source block for nodes with formal validation."""
+        import html as html_mod
         if not node or not node.validation:
             return ''
         formal = node.validation.get('formal')
@@ -1158,14 +1167,17 @@ class Plugin(BasePlugin):
             source = lean_path.read_text(encoding='utf-8')
         except OSError:
             return ''
+        escaped = html_mod.escape(source)
         validation_url = self.config.get('validation_url', '')
         href = f'{validation_url.rstrip("/")}/{formal["file"]}' if validation_url else ''
-        link = f' ([source]({href}))' if href else ''
-        lines = ['\n', '\n', '---', '\n',
-                 f'<details><summary><strong>Lean formalization</strong>{link}</summary>\n',
-                 f'```lean\n{source}```\n',
-                 '</details>\n']
-        return '\n'.join(lines)
+        link_html = f' (<a href="{href}">source</a>)' if href else ''
+        return (
+            '\n\n---\n\n'
+            f'<details class="lean-source"><summary>'
+            f'<strong>Lean formalization</strong>{link_html}</summary>\n'
+            f'<pre><code class="language-lean">{escaped}</code></pre>\n'
+            f'</details>\n'
+        )
 
     def _autolink_element_ids(self, markdown: str, page) -> str:
         """Replace E-ID references in prose with links. Skip code/math/headings."""

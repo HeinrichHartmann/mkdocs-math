@@ -815,6 +815,7 @@ class Plugin(BasePlugin):
                 page.meta['title'] = f'{node.id} . {abbrev} . {node.title}'
             header = self._render_elements_header(node_id, page)
             backlinks = self._render_elements_backlinks(node_id, page)
+            lean_block = self._render_lean_source(node, config)
             # Normalize H1 from frontmatter (single display truth, plain
             # title); the chip row goes ABOVE the title.
             lines = markdown.split('\n')
@@ -826,7 +827,7 @@ class Plugin(BasePlugin):
                     insert_pos = i
                     break
             lines.insert(insert_pos, header)
-            markdown = '\n'.join(lines) + backlinks
+            markdown = '\n'.join(lines) + backlinks + lean_block
 
         # Process citations first (before theorem environments)
         markdown = self._process_citations(markdown, page)
@@ -1141,6 +1142,29 @@ class Plugin(BasePlugin):
         for uid in sorted(used_by):
             lines.append(f'- {self._element_link(uid, page)}')
         lines.append('')
+        return '\n'.join(lines)
+
+    def _render_lean_source(self, node, config) -> str:
+        """Render collapsible Lean source block for nodes with formal validation."""
+        if not node or not node.validation:
+            return ''
+        formal = node.validation.get('formal')
+        if not isinstance(formal, dict) or 'file' not in formal:
+            return ''
+        lean_path = Path(config['docs_dir']).parent / formal['file']
+        if not lean_path.is_file():
+            return ''
+        try:
+            source = lean_path.read_text(encoding='utf-8')
+        except OSError:
+            return ''
+        validation_url = self.config.get('validation_url', '')
+        href = f'{validation_url.rstrip("/")}/{formal["file"]}' if validation_url else ''
+        link = f' ([source]({href}))' if href else ''
+        lines = ['\n', '\n', '---', '\n',
+                 f'<details><summary><strong>Lean formalization</strong>{link}</summary>\n',
+                 f'```lean\n{source}```\n',
+                 '</details>\n']
         return '\n'.join(lines)
 
     def _autolink_element_ids(self, markdown: str, page) -> str:

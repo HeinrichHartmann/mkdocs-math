@@ -6,6 +6,38 @@
   <link rel="canonical" href="{{ page.meta.canonical_url }}">
   <meta name="slug" content="{{ page.meta.slug }}">
   {% endif %}
+  {% if pdf_serve_url %}
+  <style>
+  .pdf-serve-btn {
+    font-size: .65rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    padding: .15rem .5rem;
+    border: 1px solid currentColor;
+    border-radius: .25rem;
+    color: var(--md-primary-bg-color);
+    opacity: .55;
+    transition: opacity .2s;
+    text-decoration: none;
+  }
+  .pdf-serve-btn:hover { opacity: 1; }
+  </style>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var nav = document.querySelector('.md-header__inner');
+    if (!nav) return;
+    var a = document.createElement('a');
+    a.href = '{{ pdf_serve_url }}';
+    a.target = '_blank';
+    a.title = 'Generate PDF (draft)';
+    a.className = 'md-header__button pdf-serve-btn';
+    a.textContent = 'PDF';
+    var src = nav.querySelector('.md-header__source');
+    if (src) nav.insertBefore(a, src);
+    else nav.appendChild(a);
+  });
+  </script>
+  {% endif %}
 {% endblock %}
 
 {% block content %}

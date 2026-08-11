@@ -313,43 +313,30 @@ def inject_preamble_markdown(markdown: str, **kwargs) -> str:
             _preamble_cache = ""
             return markdown
 
-    # Collect preamble parts
-    preamble_parts = []
+    # Build separate $$ blocks for global and per-page preamble so a
+    # MathJax parse error in one doesn't prevent the other from loading.
+    def _preamble_block(content: str) -> str:
+        return f'<div class="arithmatex" style="display:none">\n$$\n{content}\n$$\n</div>\n\n'
 
-    # Add global preamble
+    blocks = []
+
     if _preamble_cache:
-        preamble_parts.append(_preamble_cache)
+        blocks.append(_preamble_block(_preamble_cache))
 
-    # Add local preamble from frontmatter
+    # Per-page preamble from frontmatter
     if page and page.meta:
+        local = None
         if isinstance(page.meta.get('math'), dict):
-            if 'preamble' in page.meta['math']:
-                math_preamble = page.meta['math']['preamble']
-                if math_preamble:
-                    preamble_parts.append(str(math_preamble))
+            local = page.meta['math'].get('preamble')
         elif 'preamble' in page.meta:
-            # Fallback for direct preamble field (old format)
-            preamble = page.meta.get('preamble')
-            if preamble:
-                preamble_parts.append(str(preamble))
+            local = page.meta.get('preamble')
+        if local:
+            blocks.append(_preamble_block(str(local)))
 
-    if not preamble_parts:
+    if not blocks:
         return markdown
 
-    combined_preamble = '\n'.join(preamble_parts)
-
-    # Create HTML div for preamble injection
-    # The div is block-level and won't be wrapped in <p> tags by markdown processor
-    # style="display:none" hides it from users
-    # class="arithmatex" signals to MathJax to process the math
-    # $$...$ contains the LaTeX preamble commands
-    preamble_div = f'''<div class="arithmatex" style="display:none">
-$$
-{combined_preamble}
-$$
-</div>
-
-'''
+    preamble_div = ''.join(blocks)
 
     # Split markdown into lines to find insertion point
     lines = markdown.split('\n')

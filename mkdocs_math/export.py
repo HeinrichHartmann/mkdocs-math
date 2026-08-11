@@ -121,10 +121,15 @@ def fix_dangling_qed(latex_body: str) -> str:
 def wrap_latex_document(meta: dict, latex_body: str, preamble_path: Optional[Path] = None, mobile: bool = False, with_url: bool = True, with_doi: bool = True) -> str:
     """Wrap LaTeX body in complete document with preamble."""
 
-    # Load preamble if provided
+    # Load preamble if provided.
+    # Also load preamble-pdf.tex (sibling file) for LaTeX-only packages/styling
+    # that are split out of the shared preamble to keep it MathJax-safe.
     preamble_content = ""
     if preamble_path and preamble_path.exists():
         preamble_content = preamble_path.read_text()
+        pdf_preamble = preamble_path.with_name('preamble-pdf.tex')
+        if pdf_preamble.exists():
+            preamble_content += '\n' + pdf_preamble.read_text()
 
     # Extract metadata
     title = meta.get('title', 'Untitled')

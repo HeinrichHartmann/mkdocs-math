@@ -46,3 +46,8 @@ markers = [
     "slow: marks tests as slow (browser rendering with Playwright)",
 ]
 addopts = "-m 'not slow'"
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.1.0",
+]

@@ -897,10 +897,11 @@ class Plugin(BasePlugin):
                 'index_url': top_url,
             }
 
-        # PDF button (dev server only, enabled via MKDOCS_PDF_URL env var)
+        # PDF + MD buttons (dev server only, enabled via MKDOCS_PDF_URL env var)
         pdf_base = os.environ.get('MKDOCS_PDF_URL')
         if pdf_base:
             context['pdf_serve_url'] = f'{pdf_base}/{page.file.src_path}'
+            context['md_serve_url'] = f'{pdf_base}/raw/{page.file.src_path}'
 
         # Article-type pages: references and outline
         if page.meta.get('type') != 'math-article':

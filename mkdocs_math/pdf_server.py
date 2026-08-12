@@ -26,7 +26,25 @@ class PDFHandler(http.server.BaseHTTPRequestHandler):
     lock: threading.Lock
 
     def do_GET(self):
-        src_path = unquote(urlparse(self.path).path).lstrip("/")
+        path = unquote(urlparse(self.path).path)
+
+        # Raw markdown serving: GET /raw/<src_path>
+        if path.startswith("/raw/"):
+            src_path = path[5:].lstrip("/")
+            if not src_path.endswith(".md"):
+                self.send_error(404)
+                return
+            src_file = (self.docs_dir / src_path).resolve()
+            if not str(src_file).startswith(str(self.docs_dir.resolve())):
+                self.send_error(403)
+                return
+            if not src_file.exists():
+                self.send_error(404, f"Not found: {src_path}")
+                return
+            self._serve_raw(src_file)
+            return
+
+        src_path = path.lstrip("/")
         if not src_path or not src_path.endswith(".md"):
             self.send_error(404)
             return
@@ -74,6 +92,15 @@ class PDFHandler(http.server.BaseHTTPRequestHandler):
                 return
 
         self._serve_pdf(pdf_path)
+
+    def _serve_raw(self, src_file: Path):
+        data = src_file.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _serve_pdf(self, pdf_path: Path):
         data = pdf_path.read_bytes()

@@ -26,15 +26,33 @@
   document.addEventListener('DOMContentLoaded', function() {
     var nav = document.querySelector('.md-header__inner');
     if (!nav) return;
-    var a = document.createElement('a');
-    a.href = '{{ pdf_serve_url }}';
-    a.target = '_blank';
-    a.title = 'Generate PDF (draft)';
-    a.className = 'md-header__button pdf-serve-btn';
-    a.textContent = 'PDF';
-    var src = nav.querySelector('.md-header__source');
-    if (src) nav.insertBefore(a, src);
-    else nav.appendChild(a);
+    var anchor = nav.querySelector('.md-header__source') || null;
+
+    var pdf = document.createElement('a');
+    pdf.href = '{{ pdf_serve_url }}';
+    pdf.target = '_blank';
+    pdf.title = 'Generate PDF (draft)';
+    pdf.className = 'md-header__button pdf-serve-btn';
+    pdf.textContent = 'PDF';
+    if (anchor) nav.insertBefore(pdf, anchor); else nav.appendChild(pdf);
+
+    {% if md_serve_url %}
+    var md = document.createElement('a');
+    md.href = '{{ md_serve_url }}';
+    md.target = '_blank';
+    md.title = 'View markdown source (shift+click to copy)';
+    md.className = 'md-header__button pdf-serve-btn';
+    md.textContent = 'MD';
+    md.addEventListener('click', function(e) {
+      if (e.shiftKey) {
+        e.preventDefault();
+        fetch(this.href).then(function(r) { return r.text(); }).then(function(t) {
+          navigator.clipboard.writeText(t);
+        });
+      }
+    });
+    if (anchor) nav.insertBefore(md, anchor); else nav.appendChild(md);
+    {% endif %}
   });
   </script>
   {% endif %}

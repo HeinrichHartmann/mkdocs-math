@@ -46,8 +46,16 @@
     md.addEventListener('click', function(e) {
       if (e.shiftKey) {
         e.preventDefault();
+        var btn = this;
         fetch(this.href).then(function(r) { return r.text(); }).then(function(t) {
-          navigator.clipboard.writeText(t);
+          navigator.clipboard.writeText(t).then(function() {
+            var toast = document.createElement('span');
+            toast.textContent = 'Copied!';
+            toast.style.cssText = 'position:fixed;top:3.5rem;right:1rem;background:#333;color:#fff;padding:.3rem .7rem;border-radius:.25rem;font-size:.75rem;opacity:1;transition:opacity .4s;z-index:9999';
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.style.opacity = '0'; }, 900);
+            setTimeout(function() { toast.remove(); }, 1300);
+          });
         });
       }
     });

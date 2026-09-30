@@ -867,6 +867,146 @@ class Plugin(BasePlugin):
             'notes': notes,
         }
 
+    def _is_literature_node(self, page) -> bool:
+        """True if the page is a literature entry (has a bibkey field)."""
+        return bool(getattr(page, 'meta', None) and page.meta.get('bibkey'))
+
+    def _render_literature_header(self, page) -> str:
+        """Render a compact metadata chip row for a literature entry page."""
+        import html as html_mod
+        meta = getattr(page, 'meta', {}) or {}
+        lid = meta.get('id', '')
+        authors = meta.get('authors') or []
+        year = meta.get('year', '')
+        doi = meta.get('doi', '')
+        arxiv = meta.get('arxiv', '')
+        url_field = meta.get('url', '')
+        level = (meta.get('verified') or {}).get('level', '')
+        topics = meta.get('topics') or []
+
+        chips = []
+
+        if lid:
+            own_name = page.file.src_path.rsplit('/', 1)[-1]
+            chips.append(f'[{lid}](<{own_name}>){{.lit-id}}')
+
+        if authors:
+            esc = html_mod.escape('; '.join(authors))
+            chips.append(f'<span class="lit-authors">{esc}</span>')
+
+        if year:
+            chips.append(f'<span class="lit-year">{year}</span>')
+
+        if doi:
+            chips.append(f'<a class="lit-ext-link" href="https://doi.org/{doi}">DOI</a>')
+        if arxiv:
+            arxiv_url = arxiv if str(arxiv).startswith('http') else f'https://arxiv.org/abs/{arxiv}'
+            chips.append(f'<a class="lit-ext-link" href="{arxiv_url}">arXiv</a>')
+        elif url_field:
+            chips.append(f'<a class="lit-ext-link" href="{html_mod.escape(url_field)}">URL</a>')
+
+        if level:
+            chips.append(f'<span class="lit-level lit-level-{level}">{level}</span>')
+
+        for t in topics[:5]:
+            chips.append(f'<span class="lit-topic">{html_mod.escape(t)}</span>')
+
+        return '\n'.join([
+            '',
+            '<div class="elements-metadata lit-header" markdown="1">',
+            ' '.join(chips),
+            '</div>',
+            '',
+        ])
+
+    def _generate_literature_listing(self, markdown: str, page, files) -> str:
+        """Generate a bibliography-style listing for a literature index page.
+
+        Replaces {{LITERATURE}} placeholder, or appends to page if absent.
+        """
+        import html as html_mod
+        import yaml
+        from pathlib import Path
+        from mkdocs.utils import get_relative_url
+
+        entries = []
+        lit_dir = Path(page.file.abs_src_path).parent
+        docs_dir_prefix = page.file.src_path.rsplit('/', 1)[0]  # e.g. "Literature"
+
+        for f in sorted(lit_dir.glob('L*.md')):
+            content = f.read_text(encoding='utf-8')
+            if not content.startswith('---'):
+                continue
+            end = content.find('\n---', 3)
+            if end == -1:
+                continue
+            try:
+                meta = yaml.safe_load(content[3:end]) or {}
+            except Exception:
+                continue
+            if not meta.get('id'):
+                continue
+
+            src_path = f'{docs_dir_prefix}/{f.name}'
+            file_obj = files.get_file_from_path(src_path)
+            rel_url = get_relative_url(file_obj.url, page.file.url) if file_obj else f.name
+
+            entries.append({'meta': meta, 'rel_url': rel_url})
+
+        entries.sort(key=lambda e: e['meta'].get('id', ''))
+
+        def fmt_authors(authors):
+            def last(a): return a.split(',')[0].strip()
+            if not authors: return ''
+            if len(authors) == 1: return last(authors[0])
+            if len(authors) == 2: return f'{last(authors[0])} and {last(authors[1])}'
+            return f'{last(authors[0])} et al.'
+
+        rows = []
+        for e in entries:
+            m = e['meta']
+            lid = m.get('id', '')
+            authors_str = fmt_authors(m.get('authors') or [])
+            year = m.get('year', '')
+            title = html_mod.escape(m.get('title', ''))
+            venue = html_mod.escape(m.get('venue', ''))
+            doi = m.get('doi', '')
+            arxiv = m.get('arxiv', '')
+            url_field = m.get('url', '')
+            level = (m.get('verified') or {}).get('level', '')
+            topics = m.get('topics') or []
+            rel_url = e['rel_url']
+
+            links = []
+            if doi:
+                links.append(f'<a class="lit-link" href="https://doi.org/{doi}">DOI</a>')
+            if arxiv:
+                au = arxiv if str(arxiv).startswith('http') else f'https://arxiv.org/abs/{arxiv}'
+                links.append(f'<a class="lit-link" href="{au}">arXiv</a>')
+            elif url_field:
+                links.append(f'<a class="lit-link" href="{html_mod.escape(url_field)}">URL</a>')
+
+            level_html = f'<span class="lit-level lit-level-{level}">{level}</span>' if level else ''
+            topic_pills = ' '.join(f'<span class="lit-topic">{html_mod.escape(t)}</span>' for t in topics[:4])
+            pills = ' '.join(filter(None, [level_html] + links + [topic_pills]))
+
+            rows.append(
+                f'<div class="lit-entry">'
+                f'<a class="lit-id" href="{rel_url}">{lid}</a>'
+                f'<div class="lit-body">'
+                f'<span class="lit-authors">{html_mod.escape(authors_str)} ({year}).</span> '
+                f'<a href="{rel_url}" class="lit-title">{title}</a>. '
+                f'<span class="lit-venue">{venue}</span>'
+                f'<div class="lit-pills">{pills}</div>'
+                f'</div></div>'
+            )
+
+        listing = '<div class="lit-index">\n' + '\n'.join(rows) + '\n</div>'
+
+        if '{{LITERATURE}}' in markdown:
+            return markdown.replace('{{LITERATURE}}', listing)
+        return markdown + '\n\n' + listing
+
     def on_page_markdown(self, markdown, page, config, files):
         """Process markdown for each page."""
         # Store original markdown for outline extraction (before any modifications)
@@ -875,6 +1015,10 @@ class Plugin(BasePlugin):
         # Generate article listing for index pages
         if getattr(page, 'meta', {}).get('type') == 'article-index':
             markdown = self._generate_article_listing(markdown, page, files)
+
+        # Generate bibliography listing for literature index pages
+        if getattr(page, 'meta', {}).get('type') == 'literature-index':
+            markdown = self._generate_literature_listing(markdown, page, files)
 
         # Elements section index pages: inject listing
         if hasattr(self, '_section_index_files') and page.file.src_path in self._section_index_files:
@@ -925,6 +1069,22 @@ class Plugin(BasePlugin):
             if 'navigation' not in hide:
                 hide.append('navigation')
             page.meta['hide'] = hide
+
+        # Literature: metadata header (DOI, authors, level, topics)
+        if self._is_literature_node(page):
+            hide = list(page.meta.get('hide', []) or [])
+            if 'navigation' not in hide:
+                hide.append('navigation')
+            page.meta['hide'] = hide
+            header = self._render_literature_header(page)
+            lines = markdown.split('\n')
+            insert_pos = 0
+            for i, line in enumerate(lines):
+                if line.strip().startswith('# '):
+                    insert_pos = i
+                    break
+            lines.insert(insert_pos, header)
+            markdown = '\n'.join(lines)
 
         # Process citations first (before theorem environments)
         markdown = self._process_citations(markdown, page)

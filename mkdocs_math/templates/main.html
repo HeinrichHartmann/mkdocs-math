@@ -20,6 +20,29 @@
   .notes-drop-menu li.active span { font-weight: 600; color: var(--md-primary-fg-color); }
   </style>
   {% endif %}
+  <style>
+  /* Literature index listing */
+  .lit-index { margin: 1.5rem 0; }
+  .lit-entry { display: flex; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid var(--md-default-fg-color--lightest); align-items: baseline; }
+  .lit-id { font-family: var(--md-code-font); font-size: .8rem; white-space: nowrap; color: var(--md-primary-fg-color); flex-shrink: 0; min-width: 4.5rem; text-decoration: none; }
+  .lit-id:hover { text-decoration: underline; }
+  .lit-body { flex: 1; font-size: .88rem; line-height: 1.5; }
+  .lit-authors { color: var(--md-default-fg-color); }
+  .lit-title { font-style: italic; color: var(--md-default-fg-color); }
+  .lit-title:hover { text-decoration: underline; }
+  .lit-venue { color: var(--md-default-fg-color--light); font-size: .82rem; }
+  .lit-pills { margin-top: .2rem; display: flex; gap: .35rem; flex-wrap: wrap; align-items: center; }
+  .lit-link, .lit-ext-link { font-size: .72rem; color: var(--md-primary-fg-color); text-decoration: none; padding: .05rem .3rem; border: 1px solid var(--md-primary-fg-color); border-radius: .2rem; opacity: .7; }
+  .lit-link:hover, .lit-ext-link:hover { opacity: 1; }
+  .lit-level { font-size: .7rem; padding: .05rem .35rem; border-radius: .2rem; background: var(--md-code-bg-color); color: var(--md-default-fg-color--light); }
+  .lit-level-full-text { color: #2e7d32; }
+  .lit-level-abstract-only { color: #856404; }
+  .lit-topic { font-size: .7rem; padding: .05rem .3rem; border-radius: .2rem; background: var(--md-code-bg-color); color: var(--md-default-fg-color--light); }
+  /* Literature page header */
+  .lit-header { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+  .lit-authors { font-size: .85rem; }
+  .lit-year { font-size: .8rem; color: var(--md-default-fg-color--light); padding: .05rem .3rem; }
+  </style>
   {% if page and page.meta and page.meta.canonical_url %}
   <link rel="canonical" href="{{ page.meta.canonical_url }}">
   <meta name="slug" content="{{ page.meta.slug }}">

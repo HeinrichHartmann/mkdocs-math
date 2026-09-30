@@ -821,6 +821,9 @@ class Plugin(BasePlugin):
         """
         from mkdocs.utils import get_relative_url
 
+        if not page.file.abs_src_path:  # generated page, no source file
+            return None
+
         src = page.file.src_path.replace('\\', '/')
         parts = src.split('/')
         in_d = len(parts) >= 2 and parts[-2].endswith('.d')

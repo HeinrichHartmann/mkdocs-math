@@ -38,6 +38,13 @@ def test_note_files_respects_exclude(tmp_path):
     assert [f.name for f in plugin._note_files(tmp_path)] == ['Intro.md', 'Sketch.md']
 
 
+def test_nav_data_skips_generated_pages():
+    from types import SimpleNamespace
+    plugin = make_plugin(notes_nav=True)
+    page = SimpleNamespace(file=SimpleNamespace(src_path='index.md', abs_src_path=None))
+    assert plugin._get_notes_nav_data(page, files=None) is None
+
+
 def test_quick_frontmatter_rejects_non_mapping():
     plugin = make_plugin()
     assert plugin._quick_frontmatter('---\ntitle: T\n---\nbody') == {'title': 'T'}

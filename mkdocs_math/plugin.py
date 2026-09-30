@@ -381,6 +381,10 @@ class Plugin(BasePlugin):
         # Show the "published" pill on node headers and index listings.
         # Disable on sites where everything is published (e.g. math-public).
         ("elements_published_pill", config_options.Type(bool, default=True)),
+        # Article notes folders (<stem>.d/): list notes individually, show a
+        # notes navbar, and hide the sidebar on note pages
+        ("notes_nav", config_options.Type(bool, default=False)),
+        ("notes_exclude", config_options.Type(list, default=[])),  # glob patterns
     )
 
     def __init__(self):
@@ -572,17 +576,27 @@ class Plugin(BasePlugin):
             # Compute relative URL from the index page to this article
             from posixpath import relpath as posix_relpath
             rel_url = posix_relpath(f.url, start=page.file.url.rsplit('/', 1)[0] if '/' in page.file.url else '')
-            # Check if a .d/ notes folder exists
-            src_stem = Path(f.abs_src_path).stem
-            src_dir = Path(f.abs_src_path).parent
+            # Notes folder <stem>.d/ next to the article: a single "notes" link,
+            # or one entry per note when notes_nav is enabled
+            d_dir = self._notes_dir(Path(f.abs_src_path))
+            article_parent = f.src_path.rsplit('/', 1)[0] if '/' in f.src_path else ''
+            index_page_dir = page.file.url.rsplit('/', 1)[0] if '/' in page.file.url else ''
+            d_src = f'{article_parent}/{d_dir.name}' if article_parent else d_dir.name
             notes_dir = None
-            for d in src_dir.iterdir():
-                if d.is_dir() and d.name.startswith(src_stem) and d.name.endswith('.d'):
-                    # Build notes URL relative to the listing page, using the article's parent dir
-                    article_parent = f.src_path.rsplit('/', 1)[0] if '/' in f.src_path else ''
-                    notes_src = article_parent + '/' + d.name + '/' if article_parent else d.name + '/'
-                    notes_dir = posix_relpath(notes_src, start=page.file.url.rsplit('/', 1)[0] if '/' in page.file.url else '')
-                    break
+            notes = []
+            if d_dir.is_dir():
+                if not self.config['notes_nav']:
+                    notes_dir = posix_relpath(d_src + '/', start=index_page_dir)
+                for nf in self._note_files(d_dir) if self.config['notes_nav'] else []:
+                    note_file_obj = files.get_file_from_path(f'{d_src}/{nf.name}')
+                    if not note_file_obj:
+                        continue
+                    nm = self._quick_frontmatter(nf.read_text(encoding='utf-8'))
+                    notes.append({
+                        'title': str(nm.get('title') or self._title_from_stem(nf.stem)),
+                        'url': posix_relpath(note_file_obj.url, start=index_page_dir),
+                        'date': str(nm.get('date') or '')[:10],
+                    })
             articles.append({
                 'title': meta.get('title', 'Untitled'),
                 'date': str(meta.get('date', '')),
@@ -595,6 +609,7 @@ class Plugin(BasePlugin):
                 'status': meta.get('status', '900 Uncategorized'),
                 'target': meta.get('target', ''),
                 'notes_dir': notes_dir,
+                'notes': notes,
             })
 
         # Group by status, sort groups lexicographically (numeric prefix gives order)
@@ -638,6 +653,9 @@ class Plugin(BasePlugin):
                 if art.get('description'):
                     line += '<br>\n  *' + art['description'] + '*'
                 lines.append(f'- {line}')
+                for note in art.get('notes', []):
+                    note_year = (' ' + note['date'][:4]) if note.get('date') else ''
+                    lines.append(f'    - [{note["title"]}]({note["url"]}){note_year}')
             lines.append('')
 
         listing = '\n'.join(lines)
@@ -765,6 +783,87 @@ class Plugin(BasePlugin):
             lines.append('</ul></div>\n')
         return '\n'.join(lines)
 
+    def _quick_frontmatter(self, content: str) -> dict:
+        """Parse YAML frontmatter cheaply; {} if absent or malformed."""
+        import yaml
+        if not content.startswith('---'):
+            return {}
+        end = content.find('\n---', 3)
+        if end == -1:
+            return {}
+        try:
+            meta = yaml.safe_load(content[3:end])
+        except Exception:
+            return {}
+        return meta if isinstance(meta, dict) else {}
+
+    def _title_from_stem(self, stem: str) -> str:
+        """Readable title from a filename stem: strip a leading date, keep casing."""
+        s = re.sub(r'^\d{4}-\d{2}-\d{2}[- ]*', '', stem)
+        return s.replace('-', ' ').replace('_', ' ').strip() or stem
+
+    def _notes_dir(self, article_path: Path) -> Path:
+        """The notes folder of an article: <stem>.d/ next to <stem>.md."""
+        return article_path.with_name(article_path.stem + '.d')
+
+    def _note_files(self, d_dir: Path) -> list:
+        """Markdown files in a notes folder, minus those matching notes_exclude."""
+        from fnmatch import fnmatch
+        exclude = self.config['notes_exclude']
+        return [nf for nf in sorted(d_dir.glob('*.md'))
+                if not any(fnmatch(nf.name, pat) for pat in exclude)]
+
+    def _get_notes_nav_data(self, page, files) -> dict | None:
+        """Return nav data for an article with a notes folder, or one of its notes.
+
+        Returns {'article': {title, url, active}, 'notes': [{title, url, active}]}
+        or None if the page has no notes folder.
+        """
+        from mkdocs.utils import get_relative_url
+
+        src = page.file.src_path.replace('\\', '/')
+        parts = src.split('/')
+        in_d = len(parts) >= 2 and parts[-2].endswith('.d')
+
+        if in_d:
+            d_src = '/'.join(parts[:-1])
+            article_file = files.get_file_from_path(d_src[:-2] + '.md')
+            if not article_file:
+                return None
+            art_meta = self._quick_frontmatter(Path(article_file.abs_src_path).read_text(encoding='utf-8'))
+            article_title = art_meta.get('title') or self._title_from_stem(Path(article_file.src_path).stem)
+            article_url = get_relative_url(article_file.url, page.file.url)
+            d_dir = Path(page.file.abs_src_path).parent
+        else:
+            if not src.endswith('.md'):
+                return None
+            d_dir = self._notes_dir(Path(page.file.abs_src_path))
+            if not d_dir.is_dir():
+                return None
+            d_src = '/'.join(parts[:-1] + [d_dir.name])
+            article_title = (getattr(page, 'meta', None) or {}).get('title') or self._title_from_stem(d_dir.name[:-2])
+            article_url = ''
+
+        notes = []
+        for nf in self._note_files(d_dir):
+            nf_obj = files.get_file_from_path(f'{d_src}/{nf.name}')
+            if not nf_obj:
+                continue
+            nm = self._quick_frontmatter(nf.read_text(encoding='utf-8'))
+            notes.append({
+                'title': str(nm.get('title') or self._title_from_stem(nf.stem)),
+                'url': get_relative_url(nf_obj.url, page.file.url),
+                'active': in_d and nf.name == parts[-1],
+            })
+
+        if not notes:
+            return None
+
+        return {
+            'article': {'title': str(article_title), 'url': article_url, 'active': not in_d},
+            'notes': notes,
+        }
+
     def on_page_markdown(self, markdown, page, config, files):
         """Process markdown for each page."""
         # Store original markdown for outline extraction (before any modifications)
@@ -815,6 +914,14 @@ class Plugin(BasePlugin):
                     break
             lines.insert(insert_pos, header)
             markdown = '\n'.join(lines) + backlinks
+
+        # Note pages (.d folder): hide left sidebar, the notes navbar replaces it
+        parts = page.file.src_path.replace('\\', '/').split('/')
+        if self.config['notes_nav'] and len(parts) >= 2 and parts[-2].endswith('.d'):
+            hide = list(page.meta.get('hide', []) or [])
+            if 'navigation' not in hide:
+                hide.append('navigation')
+            page.meta['hide'] = hide
 
         # Process citations first (before theorem environments)
         markdown = self._process_citations(markdown, page)
@@ -902,6 +1009,12 @@ class Plugin(BasePlugin):
         if pdf_base:
             context['pdf_serve_url'] = f'{pdf_base}/{page.file.src_path}'
             context['md_serve_url'] = f'{pdf_base}/raw/{page.file.src_path}'
+
+        # Notes navbar: pass structured data for JS to build the secondary bar
+        if self.config['notes_nav'] and hasattr(self, '_files'):
+            nav_data = self._get_notes_nav_data(page, self._files)
+            if nav_data:
+                context['article_nav'] = nav_data
 
         # Article-type pages: references and outline
         if page.meta.get('type') != 'math-article':

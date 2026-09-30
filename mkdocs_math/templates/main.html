@@ -2,10 +2,100 @@
 
 {% block extrahead %}
   {{ super() }}
+  {% if article_nav %}
+  <style>
+  /* Article / note secondary navbar */
+  .article-navbar { background: var(--md-primary-fg-color--light, #2b2b2b); color: var(--md-primary-bg-color); display: flex; align-items: center; padding: 0 .8rem; height: 2.2rem; font-size: .78rem; gap: 1rem; z-index: 9; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+  .article-navbar-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+  .article-navbar-title a { color: inherit; text-decoration: none; opacity: .75; }
+  .article-navbar-title a:hover { opacity: 1; }
+  .article-navbar-title span { opacity: 1; }
+  .notes-drop { position: relative; flex-shrink: 0; }
+  .notes-drop-btn { background: none; border: 1px solid rgba(255,255,255,.4); color: inherit; font-size: .75rem; padding: .2rem .6rem; border-radius: .25rem; cursor: pointer; white-space: nowrap; }
+  .notes-drop-btn:hover { border-color: rgba(255,255,255,.8); }
+  .notes-drop-menu { display: none; position: absolute; right: 0; top: calc(100% + .3rem); background: var(--md-default-bg-color); color: var(--md-default-fg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: .25rem; box-shadow: 0 4px 12px rgba(0,0,0,.15); min-width: 14rem; max-width: 28rem; z-index: 100; list-style: none; margin: 0; padding: .3rem 0; }
+  .notes-drop-menu.open { display: block; }
+  .notes-drop-menu li a, .notes-drop-menu li span { display: block; padding: .4rem .8rem; font-size: .82rem; color: var(--md-default-fg-color); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .notes-drop-menu li a:hover { background: var(--md-code-bg-color); }
+  .notes-drop-menu li.active span { font-weight: 600; color: var(--md-primary-fg-color); }
+  </style>
+  {% endif %}
   {% if page and page.meta and page.meta.canonical_url %}
   <link rel="canonical" href="{{ page.meta.canonical_url }}">
   <meta name="slug" content="{{ page.meta.slug }}">
   {% endif %}
+  {% if article_nav %}
+  <script>
+  (function() {
+    var data = {{ article_nav | tojson }};
+    document.addEventListener('DOMContentLoaded', function() {
+      var bar = document.createElement('div');
+      bar.className = 'article-navbar';
+
+      // Article title (link or plain)
+      var titleEl = document.createElement('div');
+      titleEl.className = 'article-navbar-title';
+      if (data.article.active) {
+        var s = document.createElement('span');
+        s.textContent = data.article.title;
+        titleEl.appendChild(s);
+      } else {
+        var a = document.createElement('a');
+        a.href = data.article.url;
+        a.textContent = data.article.title;
+        titleEl.appendChild(a);
+      }
+      bar.appendChild(titleEl);
+
+      // Notes dropdown
+      if (data.notes && data.notes.length) {
+        var activeNote = data.notes.find(function(n) { return n.active; });
+        var drop = document.createElement('div');
+        drop.className = 'notes-drop';
+
+        var btn = document.createElement('button');
+        btn.className = 'notes-drop-btn';
+        btn.textContent = (activeNote ? activeNote.title : 'Notes') + ' ▾';
+        drop.appendChild(btn);
+
+        var menu = document.createElement('ul');
+        menu.className = 'notes-drop-menu';
+        data.notes.forEach(function(note) {
+          var li = document.createElement('li');
+          if (note.active) li.className = 'active';
+          if (note.active) {
+            var sp = document.createElement('span');
+            sp.textContent = note.title;
+            li.appendChild(sp);
+          } else {
+            var na = document.createElement('a');
+            na.href = note.url;
+            na.textContent = note.title;
+            li.appendChild(na);
+          }
+          menu.appendChild(li);
+        });
+        drop.appendChild(menu);
+        bar.appendChild(drop);
+
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          menu.classList.toggle('open');
+          btn.setAttribute('aria-expanded', menu.classList.contains('open'));
+        });
+        document.addEventListener('click', function() { menu.classList.remove('open'); });
+      }
+
+      // Inject inside the sticky header so it sticks automatically
+      var headerEl = document.querySelector('.md-header[data-md-component="header"]');
+      if (headerEl) {
+        headerEl.appendChild(bar);
+      }
+    });
+  })();
+  </script>
+  {% endif %}
+
   {% if pdf_serve_url %}
   <style>
   .pdf-serve-btn {

@@ -37,14 +37,23 @@ function Div(elem)
 
   -- Convert the div content to LaTeX by wrapping with \begin{} and \end{}
   local begin_block = pandoc.RawBlock("latex", begin_cmd)
-  local end_block = pandoc.RawBlock("latex", "\\end{" .. env_name .. "}")
+  local end_cmd = "\\end{" .. env_name .. "}"
 
-  -- Return a sequence: begin block, content blocks, end block
   local result = { begin_block }
   for _, block in ipairs(elem.content) do
     table.insert(result, block)
   end
-  table.insert(result, end_block)
+
+  -- If the environment ends in a paragraph, close it inside that paragraph.
+  -- A separate block would be preceded by a blank line (\par), pushing
+  -- end marks such as amsthm's \qed onto a line of their own.
+  local last = result[#result]
+  if #result > 1 and (last.t == "Para" or last.t == "Plain") then
+    table.insert(last.content, pandoc.SoftBreak())
+    table.insert(last.content, pandoc.RawInline("latex", end_cmd))
+  else
+    table.insert(result, pandoc.RawBlock("latex", end_cmd))
+  end
 
   return result
 end
